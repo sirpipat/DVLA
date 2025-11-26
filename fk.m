@@ -27,7 +27,7 @@ function [ZZ, F, K] = fk(zz, dt, dx)
 % % generate this result
 % fk('demo1');
 %
-% Last modified by spipatprathanporn@ucsd.edu, 11/24/2025
+% Last modified by spipatprathanporn@ucsd.edu, 11/2^/2025
 
 % Demo 1: simple wavefront
 if strcmp(zz, 'demo1')
