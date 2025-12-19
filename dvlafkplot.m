@@ -9,12 +9,12 @@ function dvlafkplot(station, datadir, metadatadir)
 % datadir       directory containing data from all stations
 % metadatadir   directory containing metadata for the station
 %
-% Last modified by spipatprathanporn@ucsd.edu, 12/02/2025
+% Last modified by spipatprathanporn@ucsd.edu, 12/19/2025
 
 % TODO: change to environment variables
 % TODO: decide where to host data+metadata
-defval('metadatadir', '/Volumes/AOGquake/work/Ivy/CAATEX/metadata');
-defval('datadir', '/Volumes/AOGquake/vault/CAATEX/')
+defval('metadatadir', '/Volumes/aog/AOGquake/work/Ivy/CAATEX/metadata');
+defval('datadir', '/Volumes/aog/AOGquake/vault/CAATEX/')
 
 % determine which directories / metadata files to read
 if strcmpi(station, 'SIO1')
@@ -106,7 +106,7 @@ for ii = 1:fndex
     % plot
     figure(1);
     set(gcf, 'Unit', 'inches', 'Position', [0 1 11 5]);
-    gcf;
+    clf;
     ax1 = subplot('Position', [0.06 0.12 0.41 0.8]);
     imagesc(K, F, 10*log10(abs(XX).^2));
     grid on
@@ -134,6 +134,47 @@ for ii = 1:fndex
 
     set(gcf, 'Renderer', 'painters')
     savename = sprintf('%s_%s_%s', mfilename, station, ...
+        replace(fname, 'nc', 'eps'));
+    figdisp(savename, [], [], 2, [], 'epstopdf')
+
+    % make seismogram plot
+    figure(2)
+    set(gcf, 'Unit', 'inches', 'Position', [0 1 11 5]);
+    clf
+    ax21 = subplot('Position', [0.06 0.12 0.41 0.8]);
+    hold on
+    scalingfactor = max(abs(xx), [], 'all') / dz * 2;
+    for kk = 1:size(xx, 2)
+        plot(t, xx(:,kk) / scalingfactor + hmdep(kk), 'LineWidth', 1, 'Color', 'k')
+    end
+    xlabel('time (s)')
+    ylabel('depth (m)')
+    title(sprintf('station: %s - %s', station, datestr(jdn)))
+    grid on
+    axis ij
+    axis tight
+    set(ax21, 'FontSize', 12, 'TickDir', 'out', 'Box', 'on')
+
+    ax22 = subplot('Position', [0.56 0.12 0.41 0.8]);
+    hold on
+    xxf = xx;
+    for kk = 1:size(xx, 2)
+        xxf(:,kk) = bandpass(xx(:,kk), 1/dt, 0.5, 2, 2, 1, 'butter', 'linear');
+    end
+    scalingfactor = max(abs(xxf), [], 'all') / dz;
+    for kk = 1:size(xx, 2)
+        plot(t, xxf(:,kk) / scalingfactor + hmdep(kk), 'LineWidth', 1, 'Color', 'k')
+    end
+    xlabel('time (s)')
+    ylabel('depth (m)')
+    title('0.5--2 Hz')
+    grid on
+    axis ij
+    axis tight
+    set(ax22, 'FontSize', 12, 'TickDir', 'out', 'Box', 'on')
+
+    set(gcf, 'Renderer', 'painters')
+    savename = sprintf('%s_%s_%s_%s', mfilename, 't-series', station, ...
         replace(fname, 'nc', 'eps'));
     figdisp(savename, [], [], 2, [], 'epstopdf')
 end
