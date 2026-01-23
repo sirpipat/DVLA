@@ -22,8 +22,16 @@ function [t, x, jdn, num, depth] = getdvlaseis(station, hydrophone, dt_begin, dt
 % jdn           datenum
 % num           hydrophone number requested
 % depth         depth of the hydrophone
+%
+% EXAMPLES:
+% % Example 1: list all valid hydrophone equipment number
+% [nums, depths] = getdvlaseis('SIO1', 'list');
+%
+% % Example 2: get the time-series data from the top hydrophone
+% [t, x, jdn, num, depth] = getdvlaseis('SIO1', nums(1), ...
+%     '2019-12-15 12:00:00', datetime(2019, 12, 15, 12, 30, 0, 0));
 % 
-% Last modified by spipatprathanporn@ucsd.edu, 01/08/2026
+% Last modified by spipatprathanporn@ucsd.edu, 01/23/2026
 
 % TODO: change to environment variables
 % TODO: decide where to host data+metadata
