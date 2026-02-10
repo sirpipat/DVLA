@@ -12,43 +12,24 @@ function xcorrdvla(station, fs, fc, dt_begin, dt_end, scaling)
 % dt_end        ending datetime
 % scaling       amplitude scaling for plotting seismograms
 %
-% Last modified by spipatprathanporn@ucsd.edu, 01/30/2026
+% Last modified by spipatprathanporn@ucsd.edu, 02/09/2026
 
 defval('fs', 10)
 defval('fc', [0.5 5])
 defval('scaling', 1)
 
-% list the hydrophones
-[list, depth] = getdvlaseis(station, 'list');
+% verify request time
+dt_begin = datetime(dt_begin);
+dt_end = datetime(dt_end);
+
+[t, xx, jdn, list, depth] = getdvlaseis(station, 'all', dt_begin, dt_end, fs);
+dt = datetime(jdn, "ConvertFrom", "datenum", ...
+    "Format", "uuuu-MM-dd'T'HH:mm:ss.SSS") + seconds(t);
 dz = depth(2) - depth(1);
 
-% determine sampling times
-dt = (dt_begin:seconds(1/fs):dt_end);
-
-% construct the seismic data array
-xx = nan(length(list), length(dt));
-
-% read the seismogram
+% apply bandpass filtering
 for ii = 1:length(list)
-    try
-        [t, x, jdn] = getdvlaseis(station, list(ii), ...
-            dt_begin - seconds(1), dt_end + seconds(1));
-        dt_dvla = datetime(jdn, "ConvertFrom", "datenum", ...
-            "Format", "uuuu-MM-dd'T'HH:mm:ss.SSS") + seconds(t);
-        fs0 = (length(t) - 1) / (t(end) - t(1));
-    
-        % lowpass filter to remove the potential alias
-        x = lowpass(x, fs0, fs/2, 2, 1, 'butter', 'linear');
-
-        % resample to the target sampling rate
-        x = interp1(dt_dvla, x, dt);
-
-        % bandpass filtering
-        xx(ii,:) = bandpass(x, fs, fc(1), fc(2), 2, 1, 'butter', 'linear');
-    catch ME
-        ME.getReport()
-        continue
-    end
+    xx(ii,:) = bandpass(xx(ii,:), fs, fc(1), fc(2), 2, 1, 'butter', 'linear');
 end
 
 % plot seismograms
