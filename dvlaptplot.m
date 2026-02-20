@@ -1,5 +1,5 @@
-function fig = dvlaptplot(z, t, data, c)
-% fig = DVLAFKPLOT(z, t, data, c)
+function figs = dvlaptplot(z, t, data, c, tipe)
+% fig = DVLAFKPLOT(z, t, data, c, tipe)
 %
 % Makes a horizontal slowness (p) - time (t) plot for a vertical hydrophone
 % array.
@@ -9,46 +9,130 @@ function fig = dvlaptplot(z, t, data, c)
 % t         time
 % data      hydrophone data: data = data(z, t)
 % c         wave speed in the medium
+% tipe      either
+%           1 - vertical slowness stacking [default]
+%           2 - horiztonal slowness stacking
+%           3 - horizontal arriving angle
+%           4 - incident angle
 %
 % OUTPUT:
-% fig       figure handle
+% figs       figure handles
 %
-% Last modified by spipatprathanporn@ucsd.edu, 02/09/2026
+% Last modified by spipatprathanporn@ucsd.edu, 02/19/2026
 
-% horizontal slownesses
-p = (-1:0.01:1)' * 1/c;
-% vertical slowness
-eta = sqrt(1/c^2 - p.^2);
+% tipe
+% 1 - vertical slowness (dt/dz)
+% 2 - horizontal slowness (sqrt(1/c^2-(dt/dz)^2))
+% 3 - horizontal arriving angle (asin(c * dt/dz))
+% 4 - incident angle (acos(c * dt/dz))
+defval('tipe', 1)
+
+if tipe == 1
+    % vertical slowness
+    eta = (-1:0.002:1)' * 1/c;
+    % horizontal slownesses
+    p = sqrt(1/c^2 - eta.^2);
+    yval = eta;
+    ytext = 'vertical slowness (s/m)';
+elseif tipe == 2
+    % horizontal slownesses
+    p = (-1:0.002:1)' * 1/c;
+    % vertical slowness
+    eta = sqrt(1/c^2 - p.^2) .* (-1 + 2 * (p >= 0));
+    yval = p;
+    ytext = 'horizontal slowness (s/m)';
+elseif tipe == 3
+    % horizontal arriving angle
+    theta = (-1:0.001:1)' * pi/2;
+    % vertical slowness
+    eta = sin(theta) / c;
+    % horizontal arriving angle in degrees
+    yval = theta * 180/pi;
+    ytext = 'horizontal arriving angle (deg)';
+elseif tipe == 4
+    % incident angle
+    theta = (-1:0.001:1)' * pi/2;
+    % vertical slowness
+    eta = cos(theta) / c;
+    % horizontal arriving angle in degrees
+    yval = theta * 180/pi;
+    ytext = 'incident angle (deg)';
+else
+    error('tipe must be 1, 2, 3, or 4.')
+end
 
 % moving window is 10 seconds long
 fs = 1 / (t(2) - t(1));
-N = round(10*fs);
+N = round(1*fs);
 
-pt = zeros([length(p) length(t)]);
+pt = zeros([length(eta) length(t)]);
 
-for jj = 1:length(p)
+% Stacked seismograms for plotting
+% The number of stacked seismograms are reduced by a factor of 10 to keep
+% the number managable.
+%zs = zeros([length(yval) length(t)]);
+zs = zeros(size(pt));
+
+% Stack the seismograms
+for jj = 1:length(eta)
     xs = data(1,:);
     for ii = 2:length(z)
-        xs = xs + interp1(t + sign(p(jj)) * ...
-            eta(jj) * (z(ii) - z(1)), ...
+        xs = xs + interp1(t + eta(jj) * (z(ii) - z(1)), ...
             data(ii,:), t, 'linear', 0);
     end
     xs_mvar = movvar(xs, N);
     pt(jj,:) = xs_mvar;
+    zs(jj, :) = xs;
 end
+zs_scaling = max(abs(zs), [], 'all') / (yval(11)-yval(1)) * 1.7;
 
-fig = figure(2);
+fig2 = figure(2);
 clf
 set(gcf, 'Units', 'inches', 'Position', [0 1 8 6])
-imagesc([t(1) t(end)], [p(1) p(end)], log10(pt))
+imagesc([t(1) t(end)], [yval(1) yval(end)], pt.^0.5)
 axis xy
 grid on
 set(gca, 'FontSize', 12, 'TickDir', 'out', 'Box', 'on')
 xlabel('time (s)')
-ylabel('horizontal slowness (s/m)')
+ylabel(ytext)
 
+colormap('jet')
 cb = colorbar;
-set(cb.Label, 'String', 'log_{10} 10-s moving variance')
+set(cb.Label, 'String', '1-s moving std')
 set(cb, 'TickDirection', 'both')
+%set(gca, "ylim", [0 1] .* ylim)
 set(gcf, 'Renderer', 'painters')
+
+% fig3 = figure(3);
+% clf
+% set(gcf, 'Units', 'inches', 'Position', [0 3 8 6])
+% hold on
+% for ii = 1:10:length(yval)
+%     plot(t, zs(ii,:) / zs_scaling + yval(ii), 'LineWidth', 1, 'Color', 'k')
+% end
+% grid on
+% set(gca, 'FontSize', 12, 'TickDir', 'out', 'Box', 'on')
+% axis tight
+% xlabel('time (s)')
+% ylabel(ytext)
+% set(gcf, 'Renderer', 'painters')
+
+fig4 = figure(4);
+clf
+set(gcf, 'Units', 'inches', 'Position', [0 5 8 6])
+imagesc([t(1) t(end)], [yval(1) yval(end)], abs(zs).^0.5)
+axis xy
+grid on
+set(gca, 'FontSize', 12, 'TickDir', 'out', 'Box', 'on')
+xlabel('time (s)')
+ylabel(ytext)
+
+colormap('jet')
+cb = colorbar;
+set(cb.Label, 'String', 'sqrt(|pressure|)')
+set(cb, 'TickDirection', 'both')
+%set(gca, "ylim", [0 1] .* ylim)
+set(gcf, 'Renderer', 'painters')
+
+figs = [fig2 fig4];
 end
