@@ -33,7 +33,7 @@ function [t, x, jdn, num, depth] = getdvlaseis(station, hydrophone, dt_begin, dt
 % [t, x, jdn, num, depth] = getdvlaseis('SIO1', nums(1), ...
 %     '2019-12-15 12:00:00', datetime(2019, 12, 15, 12, 30, 0, 0));
 % 
-% Last modified by spipatprathanporn@ucsd.edu, 02/09/2026
+% Last modified by spipatprathanporn@ucsd.edu, 02/19/2026
 
 % TODO: change to environment variables
 % TODO: decide where to host data+metadata
@@ -85,7 +85,7 @@ elseif strcmpi(hydrophone, 'all')
     % length of the seismogram
     [t, x1, jdn] = getdvlaseis(station, snx(1), dt_begin, dt_end, ...
         fs, datadir, metadatadir);
-    x = nan(length(snx), length(t));
+    x = zeros(length(snx), length(t));
     x(1,:) = x1;
     % Requests the rest of the mooring
     for ii = 2:length(snx)
