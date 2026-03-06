@@ -16,7 +16,7 @@ function minfo = mooringinfo(name, metadatadir)
 % SEE ALSO:
 % LISTCAATEXMOORINGS
 %
-% Last modified by spipatprathanporn@ucsd.edu, 02/09/2026
+% Last modified by spipatprathanporn@ucsd.edu, 03/06/2026
 
 % TODO: change to environment variables
 % TODO: decide where to host data+metadata
@@ -32,12 +32,12 @@ elseif strcmpi(name, 'SIO2')
     metadatafile = fullfile(metadatadir, 'minfo', 'minfo.SN103.mat');
     load(metadatafile, 'minfo');
     metadatafile = fullfile(metadatadir, 'minfo', 'minfo.SN104.mat');
-    load(metadatafile, 'minfo2');
+    minfo2 = load(metadatafile, 'minfo');
 elseif strcmpi(name, 'SIO3')
     metadatafile = fullfile(metadatadir, 'minfo', 'minfo.SN105.mat');
     load(metadatafile, 'minfo');
     metadatafile = fullfile(metadatadir, 'minfo', 'minfo.SN106.mat');
-    load(metadatafile, 'minfo2');
+    minfo2 = load(metadatafile, 'minfo');
 elseif strcmpi(name, 'NERSC1')
     metadatafile = fullfile(metadatadir, 'minfo', 'minfo.SN110.mat');
     load(metadatafile, 'minfo');
