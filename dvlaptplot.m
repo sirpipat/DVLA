@@ -18,7 +18,7 @@ function figs = dvlaptplot(z, t, data, c, tipe)
 % OUTPUT:
 % figs       figure handles
 %
-% Last modified by spipatprathanporn@ucsd.edu, 02/19/2026
+% Last modified by spipatprathanporn@ucsd.edu, 03/06/2026
 
 % tipe
 % 1 - vertical slowness (dt/dz)
@@ -61,9 +61,9 @@ else
     error('tipe must be 1, 2, 3, or 4.')
 end
 
-% moving window is 10 seconds long
+% moving window is 0.1 seconds long
 fs = 1 / (t(2) - t(1));
-N = round(1*fs);
+N = round(0.1*fs);
 
 pt = zeros([length(eta) length(t)]);
 
@@ -85,6 +85,12 @@ for jj = 1:length(eta)
     zs(jj, :) = xs;
 end
 zs_scaling = max(abs(zs), [], 'all') / (yval(11)-yval(1)) * 1.7;
+
+% autocorrelation of stacked seismograms
+azs = zeros([size(zs,1) size(zs,2)*2-1]);
+for ii = 1:length(eta)
+    azs(ii,:) = xcorr(detrend(pt(ii,:), 0), 'coeff');
+end
 
 fig2 = figure(2);
 clf
@@ -134,5 +140,24 @@ set(cb, 'TickDirection', 'both')
 %set(gca, "ylim", [0 1] .* ylim)
 set(gcf, 'Renderer', 'painters')
 
-figs = [fig2 fig4];
+fig5 = figure(5);
+clf
+set(gcf, 'Units', 'inches', 'Position', [0 7 8 6])
+imagesc((t(end)-t(1)) * [-1 1], [yval(1) yval(end)], azs)
+axis xy
+grid on
+set(gca, 'FontSize', 12, 'TickDir', 'out', 'Box', 'on')
+xlabel('time (s)')
+ylabel(ytext)
+
+colormap('kelicol')
+clim([-1 1])
+%xlim([-10 10])
+cb = colorbar;
+set(cb.Label, 'String', 'autocorrelation of pressure')
+set(cb, 'TickDirection', 'both')
+set(gcf, 'Renderer', 'painters')
+
+
+figs = [fig2 fig4 fig5];
 end
