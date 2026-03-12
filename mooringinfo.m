@@ -16,7 +16,7 @@ function minfo = mooringinfo(name, metadatadir)
 % SEE ALSO:
 % LISTCAATEXMOORINGS
 %
-% Last modified by spipatprathanporn@ucsd.edu, 03/06/2026
+% Last modified by spipatprathanporn@ucsd.edu, 03/12/2026
 
 % TODO: change to environment variables
 % TODO: decide where to host data+metadata
@@ -53,6 +53,8 @@ end
 
 % merge info from 2 sets of hydrophones for SIO moorings
 if contains(name, 'SIO')
+    % snxSTARtag preserve which STARtag each hydrophone belongs to
+    minfo.snxSTARtag = {minfo.snx, minfo2.minfo.snx};
     minfo.STARtag = {minfo.STARtag, minfo2.minfo.STARtag};
     minfo.dstardep = [minfo.dstardep minfo2.minfo.dstardep];
     minfo.xdcrdep = [minfo.xdcrdep minfo2.minfo.xdcrdep];
@@ -63,5 +65,6 @@ if contains(name, 'SIO')
 % make STARtag a cell array for NERSC moorings to be consistent with SIO
 else
     minfo.STARtag = {minfo.STARtag};
+    minfo.snxSTARtag = {minfo.snx};
 end
 end
