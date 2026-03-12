@@ -10,7 +10,7 @@ function dvlamisalignmenttest(station, fs, metadatadir, datadir)
 % station       station name either 'SIO1', 'SIO2', or 'SIO3'
 % fs            sampling rate
 %
-% Last modified by spipatprathanporn@ucsd.edu, 03/04/2026
+% Last modified by spipatprathanporn@ucsd.edu, 03/12/2026
 
 % TODO: change to environment variables
 % TODO: decide where to host data+metadata
@@ -48,6 +48,21 @@ for ii = 1:sndex19
         ME.getReport()
         continue
     end
+
+    % correct for the DSTAR clock drift
+    ccorr_top = load(fullfile(metadatadir, 'ccorrz', ...
+        sprintf('ccorrz.%sx.mat', minfo.STARtag{1})));
+    ccorr_bot = load(fullfile(metadatadir, 'ccorrz', ...
+        sprintf('ccorrz.%sx.mat', minfo.STARtag{2})));
+    t_correction19 = interp1(ccorr_top.yd_ccorr, ccorr_top.ccorr, ...
+        jdn19 + t19/86400, 'linear');
+    t_correction20 = interp1(ccorr_top.yd_ccorr, ccorr_top.ccorr, ...
+        jdn20 + t20/86400, 'linear');
+    t_correction21 = interp1(ccorr_bot.yd_ccorr, ccorr_bot.ccorr, ...
+        jdn21 + t21/86400, 'linear');
+    x19 = interp1(t19+t_correction19, x19, t19, 'linear', 'extrap');
+    x20 = interp1(t20+t_correction20, x20, t20, 'linear', 'extrap');
+    x21 = interp1(t21+t_correction21, x21, t21, 'linear', 'extrap');
 
     % lowpass filter
     fs19 = 1 / (t19(2) - t19(1));
