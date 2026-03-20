@@ -58,5 +58,5 @@ obj = feval(func_handl, ax, x, y, varargin{3:end});
 
 % gather the output
 varns = {obj};
-varargout = varns{1:nargout};
+varargout = varns(1:nargout);
 end
