@@ -8,6 +8,9 @@ function varargout = polarbasemap(ax, rlim, type)
 % and the ocean as well as basic latitude/longitude grid. The coordinates
 % of the plot remains cartesian with the northpole centered at (0,0) and
 % the prime meridian (longitude=0) is pointing in -Y direction (downward).
+% Use PLOTPOLARMAP to plot anything to the basemap. Otherwise, make sure 
+% that you use [x,y] = (90-lat)*[sin(lon*pi/180), -cos(lon*pi/180]
+% coordinates when you plot anything to the basemap.
 %
 % INPUT:
 % ax        target axes                                     [default: gca]
