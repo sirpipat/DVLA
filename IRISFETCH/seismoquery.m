@@ -55,5 +55,5 @@ command = sprintf('%s --channels %s --outdir %s', command, channel, ...
 command = sprintf('%s --format sac', command);
 
 varns = {command, outputdir};
-varargout = varns(1:narargout);
+varargout = varns(1:nargout);
 end
