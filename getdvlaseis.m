@@ -33,7 +33,7 @@ function [t, x, jdn, num, depth] = getdvlaseis(station, hydrophone, dt_begin, dt
 % [t, x, jdn, num, depth] = getdvlaseis('SIO1', nums(1), ...
 %     '2019-12-15 12:00:00', datetime(2019, 12, 15, 12, 30, 0, 0));
 % 
-% Last modified by spipatprathanporn@ucsd.edu, 02/19/2026
+% Last modified by spipatprathanporn@ucsd.edu, 04/06/2026
 
 % TODO: change to environment variables
 % TODO: decide where to host data+metadata
@@ -118,17 +118,34 @@ if dt_begin.Hour == 0 && dt_begin.Minute < 45
     jdn = jdn - 1;
     hours = 23;
 else
-    hours = 11;
+    if dt_begin.Hour == 23
+        hours = 23;
+    else
+        hours = 11;
+    end
 end
 
 % form the file name to read
 fname = fullfile(masterdir, sprintf('%03d', hydrophone), ...
     sprintf('rcv_%d%d5950.nc', jdn, hours));
 [x, t, jdn] = HMrcvx(fname);
-dt = datetime(jdn, "ConvertFrom", "datenum", ...
-    'Format', 'uuuu-MM-dd''T''HH:mm:ss.SSSSSS') + seconds(t);
+
+% time correction
+if any(minfo.snxSTARtag{1} == hydrophone)
+    STARtag = minfo.STARtag{1};
+else
+    STARtag = minfo.STARtag{2};
+end
+ccorr = load(fullfile(metadatadir, 'ccorrz', ...
+    sprintf('ccorrz.%sx.mat', STARtag)));
+t_correction = interp1(ccorr.yd_ccorr, ccorr.ccorr, jdn + t/86400, 'linear');
 
 if ~isempty(fs)
+    % corrected recorded datetimes
+    dt = datetime(jdn, "ConvertFrom", "datenum", ...
+        'Format', 'uuuu-MM-dd''T''HH:mm:ss.SSSSSS') + ...
+        seconds(t+t_correction);
+
     % resample datetimes
     dt_sample = (dt_begin:seconds(1/fs):dt_end);
 
@@ -138,12 +155,16 @@ if ~isempty(fs)
     x = lowpass(x, fs0, fs/2, 2, 1, 'butter', 'linear');
 
     % resample to the target sampling rate
-    x = interp1(dt, x, dt_sample);
+    dt_sample_limited = max(min(dt_sample, max(dt)), min(dt));
+    x = interp1(dt, x, dt_sample_limited, 'linear', 'extrap');
     
     % resample the times
     t = seconds(dt_sample - datetime(jdn, "ConvertFrom", "datenum", ...
         'Format', 'uuuu-MM-dd''T''HH:mm:ss.SSSSSS'));
     dt = dt_sample;
+else
+    t_limited = max(min(t, max(t+t_correction)), min(t+t_correction));
+    x = interp1(t+t_correction, x, t_limited, 'linear', 'extrap');
 end
 
 % slice the seismogram
