@@ -24,7 +24,7 @@ function [st, hdr] = plot3components(ddir, net, sta, loc, ev, plt)
 % st            three component seismograms
 % hdr           seismograms' metadata headers
 %
-% Last modified by spipatprathanporn@ucsd.edu, 03/25/2026
+% Last modified by spipatprathanporn@ucsd.edu, 04/28/2026
 
 defval('net', '*')
 defval('sta', '*')
@@ -170,14 +170,34 @@ if plt
         'deg', hdr{1}.GCARC, 'mod', 'ak135'), 1), 'time');
     tS = getfield(indeks(tauptime('dep', hdr{1}.EVDP, 'ph', 's,S', ...
         'deg', hdr{1}.GCARC, 'mod', 'ak135'), 1), 'time');
-    tPP = getfield(indeks(tauptime('dep', hdr{1}.EVDP, 'ph', 'PP', ...
-        'deg', hdr{1}.GCARC, 'mod', 'ak135'), 1), 'time');
-    tSS = getfield(indeks(tauptime('dep', hdr{1}.EVDP, 'ph', 'SS', ...
-        'deg', hdr{1}.GCARC, 'mod', 'ak135'), 1), 'time');
-    tPcP = getfield(indeks(tauptime('dep', hdr{1}.EVDP, 'ph', 'PcP', ...
-        'deg', hdr{1}.GCARC, 'mod', 'ak135'), 1), 'time');
-    tScS = getfield(indeks(tauptime('dep', hdr{1}.EVDP, 'ph', 'ScS', ...
-        'deg', hdr{1}.GCARC, 'mod', 'ak135'), 1), 'time');
+    try
+        tPP = getfield(indeks(tauptime('dep', hdr{1}.EVDP, 'ph', 'PP', ...
+            'deg', hdr{1}.GCARC, 'mod', 'ak135'), 1), 'time');
+    catch ME
+        ME.getReport()
+        tPP = nan;
+    end
+    try
+        tSS = getfield(indeks(tauptime('dep', hdr{1}.EVDP, 'ph', 'SS', ...
+            'deg', hdr{1}.GCARC, 'mod', 'ak135'), 1), 'time');
+    catch ME
+        ME.getReport()
+        tSS = nan;
+    end
+    try
+        tPcP = getfield(indeks(tauptime('dep', hdr{1}.EVDP, 'ph', 'PcP', ...
+            'deg', hdr{1}.GCARC, 'mod', 'ak135'), 1), 'time');
+    catch ME
+        ME.getReport()
+        tPcP = nan;
+    end
+    try
+        tScS = getfield(indeks(tauptime('dep', hdr{1}.EVDP, 'ph', 'ScS', ...
+            'deg', hdr{1}.GCARC, 'mod', 'ak135'), 1), 'time');
+    catch ME
+        ME.getReport()
+        tScS = nan;
+    end
     [~,~,tT1600] = PTtraveltime(hdr{1}.GCARC, hdr{1}.EVDP, 0, 1.6, 0);
     [~,~,tT1400] = PTtraveltime(hdr{1}.GCARC, hdr{1}.EVDP, 0, 1.4, 0);
 
