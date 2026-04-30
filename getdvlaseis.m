@@ -15,7 +15,7 @@ function [t, x, jdn, num, depth] = getdvlaseis(station, hydrophone, dt_begin, dt
 %     - 'middle'    get the middle hydrophone
 %     - 'all'       get all hydrophones
 % dt_begin      beginning datetime or datestr
-% dt_begin      ending datetime or datestr
+% dt_end        ending datetime or datestr
 % fs            sampling rate
 % 
 % OUTPUT:
@@ -166,6 +166,12 @@ if ~isempty(fs)
 else
     t_limited = max(min(t, max(t+t_correction)), min(t+t_correction));
     x = interp1(t+t_correction, x, t_limited, 'linear', 'extrap');
+
+    % corrected recorded datetimes
+    dt = datetime(jdn, "ConvertFrom", "datenum", ...
+        'Format', 'uuuu-MM-dd''T''HH:mm:ss.SSSSSS') + ...
+        seconds(t_limited);
+    t = t_limited;
 end
 
 % slice the seismogram
