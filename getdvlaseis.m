@@ -33,7 +33,7 @@ function [t, x, jdn, num, depth] = getdvlaseis(station, hydrophone, dt_begin, dt
 % [t, x, jdn, num, depth] = getdvlaseis('SIO1', nums(1), ...
 %     '2019-12-15 12:00:00', datetime(2019, 12, 15, 12, 30, 0, 0));
 % 
-% Last modified by spipatprathanporn@ucsd.edu, 04/06/2026
+% Last modified by spipatprathanporn@ucsd.edu, 04/30/2026
 
 % TODO: change to environment variables
 % TODO: decide where to host data+metadata
@@ -57,6 +57,7 @@ if strcmpi(hydrophone, 'list')
     x = hmdep;
     jdn = NaN;
     num = NaN;
+    depth = NaN;
     return
 elseif strcmpi(hydrophone, 'top')
     fprintf('Request seismogram from hydrophone number %d.\n', snx(1));
