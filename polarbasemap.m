@@ -25,7 +25,7 @@ function varargout = polarbasemap(ax, rlim, type)
 % SEE ALSO:
 % PLOTPOLARMAP
 %
-% Last modified by spipatprathanporn@ucsd.edu, 03/20/2026
+% Last modified by spipatprathanporn@ucsd.edu, 04/30/2026
 
 defval('ax', gca)
 defval('rlim', 40)
@@ -193,7 +193,7 @@ lon_plate_rad = deg2rad(XY(:,1));
 colat_plate = 90 - XY(:,2);
 plot(ax, colat_plate .* sin(lon_plate_rad), ...
     -colat_plate .* cos(lon_plate_rad), ...
-    'Color', 'r', 'LineWidth', 1);
+    'Color', 'r', 'LineWidth', 1, 'DisplayName', 'plate boundary');
 
 % latitude grid
 lat_grid = (10:10:rlim)';
@@ -205,7 +205,7 @@ if length(lat_grid) < 3
 end
 for ii = 1:length(lat_grid)
     plot(ax, lat_grid(ii)*sin(lon_rad), -lat_grid(ii)*cos(lon_rad), ...
-        'Color', [0.5 0.5 0.5], 'LineWidth', 0.5)
+        'Color', [0.5 0.5 0.5], 'LineWidth', 0.5, 'HandleVisibility', 'off')
 end
 
 % longitude grid
@@ -213,12 +213,12 @@ lon_grid = (0:5) * pi/6;
 for ii = 1:length(lon_grid)
     plot(ax, [-1 1] * rlim * sin(lon_grid(ii)), ...
         [1 -1] * rlim * cos(lon_grid(ii)), 'Color', [0.5 0.5 0.5], ...
-        'LineWidth', 0.5)
+        'LineWidth', 0.5, 'HandleVisibility', 'off')
 end
 
 % outer rim
 plot(ax, rlim*sin(lon_rad), -rlim*cos(lon_rad), 'Color', [0 0 0], ...
-    'LineWidth', 2);
+    'LineWidth', 2, 'HandleVisibility', 'off');
 
 % axes data aspect ratio and sizing
 axis tight
