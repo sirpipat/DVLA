@@ -18,7 +18,7 @@ function figs = dvlaptplot(z, t, data, c, tipe)
 % OUTPUT:
 % figs       figure handles
 %
-% Last modified by spipatprathanporn@ucsd.edu, 03/06/2026
+% Last modified by spipatprathanporn@ucsd.edu, 04/30/2026
 
 % tipe
 % 1 - vertical slowness (dt/dz)
@@ -63,7 +63,7 @@ end
 
 % moving window is 0.1 seconds long
 fs = 1 / (t(2) - t(1));
-N = round(0.1*fs);
+N = round(1*fs);
 
 pt = zeros([length(eta) length(t)]);
 
@@ -75,22 +75,36 @@ zs = zeros(size(pt));
 
 % Stack the seismograms
 for jj = 1:length(eta)
-    xs = data(1,:);
+    xs = data(1,:) / median(abs(data(1,:)));
     for ii = 2:length(z)
         xs = xs + interp1(t + eta(jj) * (z(ii) - z(1)), ...
-            data(ii,:), t, 'linear', 0);
+            data(ii,:) / max(median(abs(data(ii,:))), 1), t, 'linear', 0);
     end
     xs_mvar = movvar(xs, N);
     pt(jj,:) = xs_mvar;
     zs(jj, :) = xs;
 end
-zs_scaling = max(abs(zs), [], 'all') / (yval(11)-yval(1)) * 1.7;
+zs_scaling = max(abs(zs), [], 'all') / (yval(101)-yval(1)) * 0.8;
 
 % autocorrelation of stacked seismograms
-azs = zeros([size(zs,1) size(zs,2)*2-1]);
-for ii = 1:length(eta)
-    azs(ii,:) = xcorr(detrend(pt(ii,:), 0), 'coeff');
+% azs = zeros([size(zs,1) size(zs,2)*2-1]);
+% for ii = 1:length(eta)
+%     azs(ii,:) = xcorr(detrend(pt(ii,:), 0), 'coeff');
+% end
+
+fig1 = figure(1);
+clf
+set(gcf, 'Units', 'inches', 'Position', [0 3 8 6])
+hold on
+for ii = 1:100:length(yval)
+    plot(t, zs(ii,:) / zs_scaling + yval(ii), 'LineWidth', 1, 'Color', 'k')
 end
+grid on
+set(gca, 'FontSize', 12, 'TickDir', 'out', 'Box', 'on')
+axis tight
+xlabel('time (s)')
+ylabel(ytext)
+set(gcf, 'Renderer', 'painters')
 
 fig2 = figure(2);
 clf
@@ -109,55 +123,43 @@ set(cb, 'TickDirection', 'both')
 %set(gca, "ylim", [0 1] .* ylim)
 set(gcf, 'Renderer', 'painters')
 
-% fig3 = figure(3);
+
+
+% fig4 = figure(4);
 % clf
-% set(gcf, 'Units', 'inches', 'Position', [0 3 8 6])
-% hold on
-% for ii = 1:10:length(yval)
-%     plot(t, zs(ii,:) / zs_scaling + yval(ii), 'LineWidth', 1, 'Color', 'k')
-% end
+% set(gcf, 'Units', 'inches', 'Position', [0 5 8 6])
+% imagesc([t(1) t(end)], [yval(1) yval(end)], abs(zs).^0.5)
+% axis xy
 % grid on
 % set(gca, 'FontSize', 12, 'TickDir', 'out', 'Box', 'on')
-% axis tight
 % xlabel('time (s)')
 % ylabel(ytext)
+% 
+% colormap('jet')
+% cb = colorbar;
+% set(cb.Label, 'String', 'sqrt(|pressure|)')
+% set(cb, 'TickDirection', 'both')
+% %set(gca, "ylim", [0 1] .* ylim)
 % set(gcf, 'Renderer', 'painters')
 
-fig4 = figure(4);
-clf
-set(gcf, 'Units', 'inches', 'Position', [0 5 8 6])
-imagesc([t(1) t(end)], [yval(1) yval(end)], abs(zs).^0.5)
-axis xy
-grid on
-set(gca, 'FontSize', 12, 'TickDir', 'out', 'Box', 'on')
-xlabel('time (s)')
-ylabel(ytext)
+% fig5 = figure(5);
+% clf
+% set(gcf, 'Units', 'inches', 'Position', [0 7 8 6])
+% imagesc((t(end)-t(1)) * [-1 1], [yval(1) yval(end)], azs)
+% axis xy
+% grid on
+% set(gca, 'FontSize', 12, 'TickDir', 'out', 'Box', 'on')
+% xlabel('time (s)')
+% ylabel(ytext)
 
-colormap('jet')
-cb = colorbar;
-set(cb.Label, 'String', 'sqrt(|pressure|)')
-set(cb, 'TickDirection', 'both')
-%set(gca, "ylim", [0 1] .* ylim)
-set(gcf, 'Renderer', 'painters')
-
-fig5 = figure(5);
-clf
-set(gcf, 'Units', 'inches', 'Position', [0 7 8 6])
-imagesc((t(end)-t(1)) * [-1 1], [yval(1) yval(end)], azs)
-axis xy
-grid on
-set(gca, 'FontSize', 12, 'TickDir', 'out', 'Box', 'on')
-xlabel('time (s)')
-ylabel(ytext)
-
-colormap('kelicol')
-clim([-1 1])
-%xlim([-10 10])
-cb = colorbar;
-set(cb.Label, 'String', 'autocorrelation of pressure')
-set(cb, 'TickDirection', 'both')
-set(gcf, 'Renderer', 'painters')
+% colormap('kelicol')
+% clim([-1 1])
+% %xlim([-10 10])
+% cb = colorbar;
+% set(cb.Label, 'String', 'autocorrelation of pressure')
+% set(cb, 'TickDirection', 'both')
+% set(gcf, 'Renderer', 'painters')
 
 
-figs = [fig2 fig4 fig5];
+figs = [fig1 fig2];
 end
