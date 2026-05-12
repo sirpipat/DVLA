@@ -8,13 +8,13 @@ import signal
 
 #!/usr/bin/python3
 """
-    Query earthquake catalog with ObsPy and save results to a MATLAB .mat file. It automatically quits if the query takes longer than 10 seconds.
+    Query earthquake catalog with ObsPy and save results to a MATLAB .mat file. It automatically quits if the query takes longer than 20 seconds.
     If you want to query longer time periods, consider splitting your queries into smaller time windows or query manually in python.
 
     Usage:
         python irisfetch_events.py --starttime '2020-01-01T00:00:00' --endtime 2020-01-02T00:00:00 --minmagnitude 5.0 --output eq_data.mat
 
-    Last modified by spipatprathanporn@ucsd.edu, 2025-12-09
+    Last modified by spipatprathanporn@ucsd.edu, 2026-05-07
 """
 
 def timeout_handler(signum, frame):
@@ -44,7 +44,7 @@ def query_and_save(
 
         # query events
         signal.signal(signal.SIGALRM, timeout_handler)
-        signal.alarm(10)  # set timeout to 10 seconds
+        signal.alarm(20)  # set timeout to 20 seconds
 
         catalog = client.get_events(
             starttime=UTCDateTime(starttime) if starttime else None,
@@ -125,7 +125,7 @@ def process_event(event):
         "PreferredLongitude": float(PreferredLongitude),
         "PreferredDepth": float(PreferredDepth),
         "PreferredMagnitudeValue": float(PreferredMagnitudeValue),
-        "PreferredMagnitudeType": PreferredMagnitudeType,
+        "PreferredMagnitudeType": PreferredMagnitudeType if PreferredMagnitudeType is not None else "",
         "PublicId": PublicId
     }
 
