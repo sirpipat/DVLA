@@ -12,6 +12,8 @@ Usage (CLI):
 
 Import:
     from seismo_query import find_stations, download_waveforms, parse_time
+
+Last modified by spipatprathanporn@ucsd.edu, 05/12/2026
 """
 
 from typing import List, Tuple
@@ -26,7 +28,7 @@ def parse_time(t: str) -> UTCDateTime:
 
 def find_stations(client: Client, lat: float, lon: float, radius_deg: float,
                                     starttime: UTCDateTime, endtime: UTCDateTime,
-                                    network: str = "*", location: str = "*", channel: str = "*",
+                                    network: str = "*", station: str = "*",location: str = "*", channel: str = "*",
                                     level: str = "channel") -> Inventory:
         """
         Return an Inventory (StationXML) of stations within `radius_deg` of (lat,lon)
@@ -34,8 +36,8 @@ def find_stations(client: Client, lat: float, lon: float, radius_deg: float,
         """
         return client.get_stations(latitude=lat, longitude=lon, maxradius=radius_deg,
                                                              starttime=starttime, endtime=endtime,
-                                                             network=network, location=location, channel=channel,
-                                                             level=level)
+                                                             network=network, station=station, location=location, 
+                                                             channel=channel, level=level)
 
 def download_waveforms(client: Client, inventory: Inventory,
                                              starttime: UTCDateTime, endtime: UTCDateTime,
@@ -116,6 +118,7 @@ def _cli():
         p.add_argument("--end", type=str, required=True, help="ISO time")
         p.add_argument("--client", type=str, default="IRIS", help="FDSN client name (IRIS, GFZ, etc.)")
         p.add_argument("--network", type=str, default="*", help="network code or *")
+        p.add_argument("--station", type=str, default="*", help="station code or *")
         p.add_argument("--location", type=str, default="*", help="location code or *")
         p.add_argument("--channels", type=str, default="BH?", help="channel code or pattern (e.g. BH?)")
         p.add_argument("--outdir", type=str, default=".", help="output directory")
@@ -126,7 +129,8 @@ def _cli():
         start = parse_time(args.start)
         end = parse_time(args.end)
         inv = find_stations(client, args.lat, args.lon, args.radius, start, end,
-                                                network=args.network, location=args.location, channel=args.channels)
+                                                network=args.network, station=args.station, location=args.location,
+                                                channel=args.channels)
         # print a concise summary
         for net in inv:
                 for sta in net:
