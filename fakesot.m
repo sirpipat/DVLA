@@ -42,7 +42,7 @@ function varargout = fakesot(op1, op2, op3, a, sigma_n, sigma_m, lambda)
 % R             prior covariance matrix of the model (tau)
 % A             adjacency matrix of a graph of events and repeaters
 %
-% Last modified by spipatprathanporn@ucsd.edu, 06/17/2026
+% Last modified by spipatprathanporn@ucsd.edu, 06/29/2026
 
 defval('op1', 0)
 defval('op2', 1)
@@ -463,7 +463,7 @@ set(gca, 'FontSize', 10, 'TickDir', 'out', 'Box', 'on')
 set(gcf, 'Renderer', 'painters')
 
 outputs = {tau_est, tau, Eo, m, n, N, R, A};
-varargout = outputs{1:nargout};
+varargout = outputs(1:nargout);
 end
 
 % define the absolute function here
