@@ -17,7 +17,7 @@ function [x, z, T, dT] = targoprofile(lonlat1, lonlat2, npts, dt, fname)
 % T                 mean temperature:     T = T(z, x)
 % dT                temperature anomaly: dT = dT(z, x)
 %
-% Last modified by spipatprathanporn@ucsd.edu, 07/21/2026
+% Last modified by spipatprathanporn@ucsd.edu, 07/31/2026
 
 % Please note that the longitude grid is from 20.5 to 379.5 degrees (cutoff
 % at 20 degrees)
@@ -32,6 +32,9 @@ defval('fname', fullfile(getenv('IFILES'), 'EARTHMODELS', 'PHYSICAL', ...
 arclens = linspace(0, distDeg, npts);
 [lats, lons] = reckon(lonlat1(2), lonlat1(1), arclens, azDeg);
 lons = mod(lons - LON_CUTOFF, 360) + LON_CUTOFF; % 20 < lons < 380
+lonlat1(1) = mod(lonlat1(1) - LON_CUTOFF, 360) + LON_CUTOFF;
+lonlat2(1) = mod(lonlat2(1) - LON_CUTOFF, 360) + LON_CUTOFF;
+
 
 % This handles cases where lons span across 20 E longitude
 % Determine if there is any jump in lons
