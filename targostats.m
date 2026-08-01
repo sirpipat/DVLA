@@ -27,7 +27,7 @@ cmap = [1 0.75 0.15; 0 0.75 0.2];
 
 
 % repeater table from Yang et al 2022 SRL
-T = readtable('~/Documents/IGPP/Research/SRL2021/supplement-mini.csv');
+T = readtable('~/Documents/IGPP/Research/SRL2022/supplement-mini.csv');
 wht = and(T.Date_.Year >= 2004, T.Date_.Year <= 2018);
 
 % reads ARGO gridded temperature
