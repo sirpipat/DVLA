@@ -1,6 +1,6 @@
-function varargout = polarbasemap2(ax, rlim, lon, lat)
+function varargout = polarbasemap2(ax, rlim, lon, lat, bath)
 % POLARBASEMAP2(rlim)
-% POLARBASEMAP2(rlim, lon, lat)
+% POLARBASEMAP2(rlim, lon, lat, bath)
 % POLARBASEMAP2(ax, rlim, ...)
 % axhandl = POLARBASEMAP2(...)
 %
@@ -15,6 +15,7 @@ function varargout = polarbasemap2(ax, rlim, lon, lat)
 % rlim      map radius (colatitude) limit in degrees        [default: 40]
 % lon       longitude of the center position                [default: 0]
 % lat       latitude of the center position                 [default: 90]
+% bath      whether to plot the bathymetry                  [default: true]
 %
 % OUTPUT:
 % axhandl   axes handle
@@ -22,12 +23,13 @@ function varargout = polarbasemap2(ax, rlim, lon, lat)
 % SEE ALSO:
 % PLOTPOLARMAP2, POLARBASEMAP
 %
-% Last modified by spipatprathanporn@ucsd.edu, 07/27/2026
+% Last modified by spipatprathanporn@ucsd.edu, 08/13/2026
 
 defval('ax', gca)
 defval('rlim', 40)
 defval('lon', 0)
 defval('lat', 90)
+defval('bath', true)
 
 % handle input parameters where the target axes is missing
 if isnumeric(ax) && isscalar(ax)
@@ -36,6 +38,8 @@ if isnumeric(ax) && isscalar(ax)
     rlim = ax;
     ax = gca;
 end
+
+cla
 
 if lat == 90
     ax = polarbasemap(ax, rlim, 'topo');
@@ -53,39 +57,77 @@ else
     az = reshape(aa, numel(aa), []);
 
     % only considers points within the map radius
-    wh = (r <= rlim);
-    r = r(wh);
-    az = az(wh);
+    wh_in = (r <= rlim);
+    r = r(wh_in);
+    az = az(wh_in);
 
     % computes (lat,lon) of grid points on the map
     [lats2, lons2] = reckon(lat, lon, r, az);
-    lonmin = min(lons2);
-    lonmax = max(lons2);
-    latmin = min(lats2);
-    latmax = max(lats2);
 
-    % reads the bathymetry
-    [lons, lats, elev] = bathymetry([], [lonmin lonmax], [latmin latmax]);
+    if abs(lat) + rlim < 90
+        % rotates the center to be 0 meridian and sets the cutoff to be 180
+        % so that the cutoff meridian will never be inside the map
+        lons2_rotated = mod(lons2-lon+180, 360) - 180;
+    
+        % GEBCO query boundary
+        lonleft = mod(min(lons2_rotated)+lon+180, 360) - 180;
+        lonright = mod(max(lons2_rotated)+lon+180, 360) - 180;
+    else
+        lonleft = -180;
+        lonright = 180;
+    end
+    latbottom = min(lats2);
+    lattop = max(lats2);
+    if bath
+        % reads the bathymetry
+        [lons, lats, elev] = bathymetry([], [lonleft lonright], [latbottom lattop]);
+    
+        % interpolate the bathymetry and make it 2D
+        if lonleft < lonright
+            topo = interp2(mod(lons+180,360)-180, lats, double(elev)', lons2, lats2);
+        else
+            topo = interp2(lons, lats, double(elev)', mod(lons2,360), lats2);
+        end
+        z = nan(size(wh_in));
+        z(wh_in) = topo;
+        z = reshape(z, sqrt(numel(rr)), []);
+    
+        % plots the elevation map
+        im = imagesc([-rlim rlim], [-rlim rlim], z);
+    
+        % set the colormap to suit the topography
+        cb = cax2dem([-8000 8000]);
+        delete(cb)
+    
+        % remove the color outside of the rim
+        set(im, 'AlphaData', rr <= rlim);
+    else
+        im = imagesc([-rlim rlim], [-rlim rlim], ones(size(rr)));
+        colormap([1 1 1])
 
-    % interpolate the bathymetry and make it 2D
-    topo = interp2(mod(lons+179.99,360)-179.99, lats, double(elev)', lons2, lats2);
-    z = nan(size(wh));
-    z(wh) = topo;
-    z = reshape(z, sqrt(numel(rr)), []);
+        % remove the color outside of the rim
+        set(im, 'AlphaData', rr <= rlim);
 
-    % plots the elevation map
-    im = imagesc([-rlim rlim], [-rlim rlim], z);
+        % coastlines
+        fig_coast = figure;
+        [~, ~, XYZ] = plotcont([min(mod(lons2,360)) lattop], [max(mod(lons2,360)) latbottom]);
+        delete(fig_coast)
+        wh = or(isnan(XYZ(:,1)), isnan(XYZ(:,2)));
+        XYZ(wh,:) = nan;
 
-    % set the colormap to suit the topography
-    cb = cax2dem([-8000 8000]);
-    delete(cb)
-
-    % remove the color outside of the rim
-    set(im, 'AlphaData', rr <= rlim);
+        distdeg = distance(lat, lon, XYZ(:,2), XYZ(:,1), 'degrees');
+        azrad = azimuth(lat, lon, XYZ(:,2), XYZ(:,1), 'degrees') * pi/180;
+    
+        distdeg(distdeg > rlim) = nan;
+        azrad(distdeg > rlim) = nan;
+    
+        plot(ax, distdeg .* sin(azrad), distdeg .* cos(azrad), ...
+            'Color', 'k', 'LineWidth', 1, 'DisplayName', 'coastlines');
+    end
 
     % plate boundaries
     fig_plate = figure;
-    [~, XY] = plotplates([min(mod(lons2,360)) latmax], [max(mod(lons2,360)) latmin]);
+    [~, XY] = plotplates([min(mod(lons2,360)) lattop], [max(mod(lons2,360)) latbottom]);
     delete(fig_plate);
     % wh = find(and(XY(2:end,1)-XY(1:end-1,1)==0, XY(2:end,2)-XY(1:end-1,2)==0)) + 1;
     % for ii = length(wh):-1:1
