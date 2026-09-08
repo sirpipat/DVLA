@@ -39,9 +39,9 @@ function [evs_str, dd, outputdir] = querysot(lonlim, latlim, starttime, ...
 %                       $IFILES/SEISMOQUERY/name
 %
 % SEE ALSO:
-% XCORRSOT
+% READQUERYSOT, XCORRSOT
 %
-% Last modified by spipatprathanporn@ucsd.edu, 05/12/2025
+% Last modified by spipatprathanporn@ucsd.edu, 09/08/2025
 
 % tracking the elapsed time
 tic;
