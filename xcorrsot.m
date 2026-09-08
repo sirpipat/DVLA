@@ -85,6 +85,7 @@ for ii = 1:N
         dt_begin = dt_origin - minutes(1);
         dt_end = dt_origin + seconds(evs_str.tT(ii)) + minutes(10);
         fname = sprintf('%s.%s_%s.sac', pstation, dt_begin, dt_end);
+        fname = replace(fname, '.000000', '');
         fname = fullfile(ddir, fname);
     
         [seisP, hdrP] = readsac(fname);
@@ -206,6 +207,7 @@ for ii = 1:N
         dt_end = dt_origin + seconds(evs_str.tT(ii)) + minutes(10);
     
         fname = sprintf('%s.%s_%s.sac', tstation, dt_begin, dt_end);
+        fname = replace(fname, '.000000', '');
         fname = fullfile(ddir, fname);
     
         [seisT, hdrT] = readsac(fname);
