@@ -1,7 +1,7 @@
-function [cc_P, tt_shift_P, cc_T, tt_shift_T] = xcorrsot(ddir, evs_str, ...
+function [evs_used, ii_used, cc_P, tt_shift_P, cc_T, tt_shift_T] = xcorrsot(ddir, evs_str, ...
     pstation, plocation, tstation, tlocation)
-% [cc_P, tt_shift_P, cc_T, tt_shift_T] = XCORRSOT(ddir, evs_str, ...
-%     pstation, plocation, tstation, tlocation)
+% [evs_used, ii_used, cc_P, tt_shift_P, cc_T, tt_shift_T] = ...
+%     XCORRSOT(ddir, evs_str, pstation, plocation, tstation, tlocation)
 %
 % Computes cross-correlation between P-phase and T-phase waveforms recorded
 % at a station from repeating events
@@ -25,12 +25,12 @@ function [cc_P, tt_shift_P, cc_T, tt_shift_T] = xcorrsot(ddir, evs_str, ...
 % SEE ALSO:
 % IRISFETCH, QUERYSOT
 %
-% Last modifed by spipatprathanporn@ucsd.edu, 05/12/2026
+% Last modifed by spipatprathanporn@ucsd.edu, 09/08/2026
 
 % length of the event list
 N = length(evs_str.PreferredTime);
 
-% output format from instrument response remove functin
+% output format from instrument response remove function
 resp_output_fmt = 'velocity';
 
 %% Part 1
@@ -40,6 +40,12 @@ dx = sin(deg2rad(median(evs_str.PreferredLatitude))) .* ...
 dy = deg2km(evs_str.PreferredLatitude - evs_str.PreferredLatitude');
 dz = evs_str.PreferredDepth - evs_str.PreferredDepth';
 dd = sqrt(dx.^2 + dy.^2 + dz.^2);
+clear dx dy dz;
+
+% compute the origin datetime
+evs_str.dt_origin = datetime(evs_str.PreferredTime, 'TimeZone', 'UTC', ...
+    'Format', 'uuuu-MM-dd''T''HH:mm:ss.SSSSSS');
+
 
 % compute P and S wave travel time to plocation
 for ii = 1:N
@@ -54,12 +60,28 @@ for ii = 1:N
     evs_str.tS_P(ii) = tt(1).time;
 end
 
+% filtered out unusable events
+dt_arrival = evs_str.dt_origin + seconds(evs_str.tP_P);
+istooclose = and(abs(dt_arrival - dt_arrival') < minutes(1), ~eye(N));
+whclose = any(istooclose, 1);
+isusable = (dd <= 60);
+isusable(whclose,:) = false;
+isusable(:,whclose) = false;
+wh = any(isusable, 1);
+ii_used = indeks(1:N, wh);
+fn = fieldnames(evs_str);
+for ii = 1:length(fn)
+    evs_str.(fn{ii}) = evs_str.(fn{ii})(wh);
+end
+dd = dd(wh, wh);
+N = length(evs_str.PreferredTime);
+clear dt_arrival istooclose isusable wh;
+
 %% Part 2 Read and process P-wave
 for ii = 1:N
     try
         % read local station seismograms for event ii
-        dt_origin = datetime(evs_str.PreferredTime(ii), 'TimeZone', 'UTC', ...
-            'Format', 'uuuu-MM-dd''T''HH:mm:ss.SSSSSS');
+        dt_origin = evs_str.dt_origin(ii);
         dt_begin = dt_origin - minutes(1);
         dt_end = dt_origin + seconds(evs_str.tT(ii)) + minutes(10);
         fname = sprintf('%s.%s_%s.sac', pstation, dt_begin, dt_end);
@@ -68,13 +90,23 @@ for ii = 1:N
         [seisP, hdrP] = readsac(fname);
         [~, ~, ~, fs, ~, dts, ~] = gethdrinfo(hdrP);
         tP = seconds(dts - dt_origin);
-        evs_str.dt_origin(ii) = dt_origin;
         
         % remove instrument response
         sacpzfileP = [fname 'pz'];
         seisP = detrend(seisP, 2) .* shanning(length(seisP), 0.016);
         seisP = real(transfer(seisP, 1/fs, [0.01 0.02 8 10], ...
             resp_output_fmt, sacpzfileP, 'sacpz'));
+
+        % downsample to 20 Hz if the sampling rate is 40 Hz
+        if abs(fs - 40) < 0.001
+            seisP = lowpass(seisP, fs, 10, 2, 2, 'butter', 'linear');
+            tP = downsample(tP, 2);
+            seisP = downsample(seisP, 2);
+            fs = fs/2;
+            hdrP.DELTA = hdrP.DELTA * 2;
+            hdrP.NPTS = length(seisP);
+            hdrP.E = hdrP.B + (hdrP.NPTS-1) * hdrP.DELTA;
+        end
     
         % apply a bandpass filter
         seisP = bandpass(seisP, fs, 1, 3, 2, 2, 'butter', 'linear');
@@ -95,11 +127,22 @@ end
 cc_P = nan(size(dd));
 tt_shift_P = nan(size(dd));
 for ii = 1:N
-    if isscalar(tr(ii).t) || isempty(tr(ii).t)
+    % ignore event with no or very short seismogram
+    if isscalar(tr(ii).t) || isempty(tr(ii).t) || tr(ii).t(end)-tr(ii).t(1) < 20
         continue
     end
     for jj = (ii+1):N
-        if isscalar(tr(jj).t) || isempty(tr(jj).t)
+        % ignore event pairs with greater than 60 km of separation
+        if dd(ii,jj) > 60
+            continue
+        end
+        % ignore event with no or very short seismogram
+        if isscalar(tr(jj).t) || isempty(tr(jj).t) || tr(jj).t(end)-tr(jj).t(1) < 20
+            continue
+        end
+        % ignore event pairs with too close arrivals at pstation
+        if abs((evs_str.dt_origin(ii)+seconds(evs_str.tP_P(ii))) - ...
+                (evs_str.dt_origin(jj)+seconds(evs_str.tP_P(jj)))) < minutes(1)
             continue
         end
         try
@@ -111,13 +154,13 @@ for ii = 1:N
             cc_P(jj,ii) = CCmax;
             tt_shift_P(ii,jj) = t_shift;
             tt_shift_P(jj,ii) = -t_shift;
-            if CCmax > 0.6
+            if CCmax > 0.8
                 figure(11);
                 clf
                 set(gcf, 'Units', 'inches', 'Position', [0 1 5 5])
                 subplot(311)
                 plot(tr(ii).t, tr(ii).seis / max(abs(tr(ii).seis)), 'LineWidth', 1)
-                xlim tight
+                xlim([min(tr(ii).t(1),tr(jj).t(1)) max(tr(ii).t(end),tr(jj).t(end))])
                 ylim([-1.2 1.2])
                 grid on
                 yticks(-1:0.5:1)
@@ -126,7 +169,7 @@ for ii = 1:N
                 set(gca, 'FontSize', 11, 'Box', 'on', 'TickDir', 'out')
                 subplot(312)
                 plot(tr(jj).t, tr(jj).seis / max(abs(tr(jj).seis)), 'LineWidth', 1)
-                xlim tight
+                xlim([min(tr(ii).t(1),tr(jj).t(1)) max(tr(ii).t(end),tr(jj).t(end))])
                 ylim([-1.2 1.2])
                 grid on
                 yticks(-1:0.5:1)
@@ -174,6 +217,17 @@ for ii = 1:N
         seisT = detrend(seisT, 2) .* shanning(length(seisT), 0.016);
         seisT = real(transfer(seisT, 1/fs, [0.01 0.02 8 10], ...
             resp_output_fmt, sacpzfileT, 'sacpz'));
+
+        % downsample to 20 Hz if the sampling rate is 40 Hz
+        if abs(fs - 40) < 0.001
+            seisT = lowpass(seisT, fs, 10, 2, 2, 'butter', 'linear');
+            tT = downsample(tT, 2);
+            seisT = downsample(seisT, 2);
+            fs = fs/2;
+            hdrT.DELTA = hdrT.DELTA * 2;
+            hdrT.NPTS = length(seisT);
+            hdrT.E = hdrT.B + (hdrT.NPTS-1) * hdrT.DELTA;
+        end
     
         % apply a bandpass filter
         seisT = bandpass(seisT, fs, 1.5, 2.5, 2, 2, 'butter', 'linear');
@@ -204,6 +258,11 @@ for ii = 1:N
         continue
     end
     for jj = (ii+1):N
+        % ignore event pairs with greater than 60 km of separation or
+        % P-wave correlation coefficients smaller than 0.9
+        if dd(ii,jj) > 60 || cc_P(ii,jj) < 0.9
+            continue
+        end
         % skip NaN traces
         if isscalar(tr_T(jj).t) || isnan(tt_shift_P(ii,jj))
             continue
@@ -238,7 +297,7 @@ for ii = 1:N
                 set(gcf, 'Units', 'inches', 'Position', [0 1 5 5])
                 subplot(311)
                 plot(tr_T1_t, tr_T1_seis / max(abs(tr_T1_seis)), 'LineWidth', 1)
-                xlim tight
+                xlim([min(tr_T1_t(1),tr_T2_t(2)) max(tr_T1_t(end),tr_T2_t(end))])
                 ylim([-1.2 1.2])
                 grid on
                 yticks(-1:0.5:1)
@@ -247,7 +306,7 @@ for ii = 1:N
                 set(gca, 'FontSize', 11, 'Box', 'on', 'TickDir', 'out')
                 subplot(312)
                 plot(tr_T2_t, tr_T2_seis / max(abs(tr_T2_seis)), 'LineWidth', 1)
-                xlim tight
+                xlim([min(tr_T1_t(1),tr_T2_t(2)) max(tr_T1_t(end),tr_T2_t(end))])
                 ylim([-1.2 1.2])
                 grid on
                 yticks(-1:0.5:1)
@@ -274,4 +333,16 @@ for ii = 1:N
     end
 end
 
+%% Part 6 filter out for unused event
+A = and(dd <= 60, and(cc_P >= 0.9, cc_T >= 0.6));
+whA = any(A,1);
+fn = fieldnames(evs_str);
+for ii = 1:length(fn)
+    evs_used.(fn{ii}) = evs_str.(fn{ii})(whA);
+end
+ii_used = ii_used(whA);
+cc_P = cc_P(whA,whA);
+cc_T = cc_T(whA,whA);
+tt_shift_P = tt_shift_P(whA,whA);
+tt_shift_T = tt_shift_T(whA,whA);
 end
