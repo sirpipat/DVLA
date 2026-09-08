@@ -1,5 +1,5 @@
 function [evs_str, dd, outputdir] = querysot(lonlim, latlim, starttime, ...
-    endtime, minmag, maxmag ,pstation, plocation, tstation, tlocation, name)
+    endtime, minmag, maxmag, pstation, plocation, tstation, tlocation, name, fname)
 % [evs_str, dd, outputdir] = querysot([minlon maxlon], [minlon maxlon], ...
 %     starttime, endtime, minmag, maxmag, pstation, [plon plat], ...
 %     tstation, [tlon tlat], name)
@@ -43,26 +43,88 @@ function [evs_str, dd, outputdir] = querysot(lonlim, latlim, starttime, ...
 %
 % Last modified by spipatprathanporn@ucsd.edu, 05/12/2025
 
+% tracking the elapsed time
+tic;
+
+defval('fname', [])
+
 outputdir = fullfile(getenv('IFILES'), 'SEISMOQUERY', name);
+if ~exist(outputdir, 'dir')
+    system(sprintf('mkdir %s', outputdir))
+end
 
 % base command for seismogram query
 basecommand = sprintf('%s %s/irisFetch/seismo_query.py', ...
     getenv('PYTHON'), getenv('DVLA'));
-basecommand = sprintf('%s --radius %f', basecommand, 5);
+basecommand = sprintf('%s --radius %f', basecommand, 2);
 
 %% Part 1: query events
-evs = irisFetch.Events('MinimumMagnitude', minmag, ...
-    'MaximumMagnitude', maxmag, ...
-    'MinimumLatitude', latlim(1), ...
-    'MaximumLatitude', latlim(2), ...
-    'MinimumLongitude', lonlim(1), ...
-    'MaximumLongitude', lonlim(2), ...
-    'StartTime', starttime, ...
-    'EndTime', endtime);
+if isempty(fname)
+    evs = irisFetch.Events('MinimumMagnitude', minmag, ...
+        'MaximumMagnitude', maxmag, ...
+        'MinimumLatitude', latlim(1), ...
+        'MaximumLatitude', latlim(2), ...
+        'MinimumLongitude', lonlim(1), ...
+        'MaximumLongitude', lonlim(2), ...
+        'StartTime', starttime, ...
+        'EndTime', endtime);
+else
+    % read the event lists from the table
+    T = readtable(fname);
+    T = unique(T);
+
+    % filter out out-of-range events
+    starttime = datetime(starttime);
+    endtime = datetime(endtime);
+
+    wh = and(and(and(T.Latitude>=latlim(1), T.Latitude<=latlim(2)), ...
+        and(T.Longitude>=lonlim(1), T.Longitude<=lonlim(2))), ...
+        and(T.Date+T.Time>=starttime, T.Date+T.Time<=endtime));
+    T = T(wh,:);
+    
+    % sort events
+    T = sortrows(sortrows(T, 'Time', 'ascend'), 'Date', 'ascend');
+    N = height(T);
+
+    % place holder event list
+    ev_nan = struct('PreferredTime', 'NaT', 'PreferredLatitude', NaN, ...
+        'PreferredLongitude', NaN, 'PreferredDepth', NaN, ...
+        'PreferredMagnitudeValue', NaN, 'PreferredMagnitudeType', '', ...
+        'PublicId', 'evid=NaN');
+    evs = repmat(ev_nan, [1 N]);
+
+    for ii = 1:N
+        ev = irisFetch.Events('MinmumMagnitude', T.Magnitude(ii)-0.5, ...
+            'MaximumMagnitude', T.Magnitude(ii)+0.5, ...
+            'MinimumLatitude', T.Latitude(ii)-0.5, ...
+            'MaximumLatitude', T.Latitude(ii)+0.5, ...
+            'MinimumLongitude', T.Longitude(ii)-0.5, ...
+            'MaximumLongitude', T.Longitude(ii)+0.5, ...
+            'StartTime', string(T.Date(ii)+T.Time(ii)-minutes(0.5), 'uuuu-MM-dd''T''HH:mm:ss.SSSSSS'), ...
+            'EndTime', string(T.Date(ii)+T.Time(ii)+minutes(0.5), 'uuuu-MM-dd''T''HH:mm:ss.SSSSSS'));
+    
+        if length(ev)~=1
+            keyboard
+        else
+            evs(ii) = ev;
+        end
+    end
+end
+
 N = length(evs);
 
+% sort events by time
+dt_origins = repmat(datetime('now','Format',...
+    'uuuu-MM-dd''T''HH:mm:ss.SSSSSS'), N, 1);
+for ii = 1:N
+    dt_origins(ii) = datetime(evs(ii).PreferredTime, ...
+        'Format', 'uuuu-MM-dd''T''HH:mm:ss.SSSSSS');
+end
+[~,ii_sort] = sort(dt_origins);
+evs = evs(ii_sort);
+
 % convert to struct of arrays
-evs_str = array2struct(evs(end:-1:1));
+evs_str = array2struct(evs);
 
 % compute the distance
 dx = sin(deg2rad(mean(latlim))) .* ...
@@ -82,55 +144,114 @@ for ii = 1:N
     evs_str.tT(ii) = evs_str.distkm(ii) / 1.51;
 end
 
-%% Part 2: query the seismograms
+%% Part 2: constuct a query csv
+query_str.network = repmat({''}, 2*N, 1);
+query_str.station = repmat({''}, 2*N, 1);
+query_str.location = repmat({''}, 2*N, 1);
+query_str.channel = repmat({''}, 2*N, 1);
+query_str.starttime = repmat({''}, 2*N, 1);
+query_str.endtime = repmat({''}, 2*N, 1);
 for ii = 1:N
     dt_origin = datetime(evs_str.PreferredTime(ii), ...
         'Format', 'uuuu-MM-dd''T''HH:mm:ss.SSSSSS');
     dt_begin = dt_origin - minutes(1);
     dt_end = dt_origin + seconds(evs_str.tT(ii)) + minutes(10);
 
-    % construct the Python call
-    words = split(tstation, '.');
-    if isempty(words{3})
-        words{3} = '""';
-    end
-    command = sprintf('%s --lat %f --lon %f', basecommand, tlocation(2), tlocation(1));
-    command = sprintf('%s --network %s --station %s', command, words{1}, words{2});
-    command = sprintf('%s --start %s --end %s', command, dt_begin, dt_end);
-    command = sprintf('%s --location %s', command, words{3}); 
-    command = sprintf('%s --channels %s --outdir %s', command, ...
-        words{4}, outputdir);
-    command = sprintf('%s --format sac', command);
-
-    % excecute the command
-    if ~exist(fullfile(outputdir, sprintf('%s.%s_%s.sac', tstation, dt_begin, dt_end)), 'file') || ...
-            ~exist(fullfile(outputdir, sprintf('%s.%s_%s.sacpz', tstation, dt_begin, dt_end)), 'file')
-        system(command);
-    else
-        fprintf('%s.%s_%s.sac is already exist in %s\n', pstation, dt_begin, dt_end, outputdir);
-    end
-
-    % download local station seismograms for origin time correction
     words = split(pstation, '.');
-    if isempty(words{3})
-        words{3} = '""';
-    end
-    command = sprintf('%s --lat %f --lon %f', basecommand, plocation(2), plocation(1));
-    command = sprintf('%s --network %s --station %s', command, words{1}, words{2});
-    command = sprintf('%s --start %s --end %s', command, dt_begin, dt_end);
-    command = sprintf('%s --location %s', command, words{3}); 
-    command = sprintf('%s --channels %s --outdir %s', command, ...
-        words{4}, outputdir);
-    command = sprintf('%s --format sac', command);
-    
-    % excecute the command
-    if ~exist(fullfile(outputdir, sprintf('%s.%s_%s.sac', pstation, dt_begin, dt_end)), 'file') || ...
-            ~exist(fullfile(outputdir, sprintf('%s.%s_%s.sacpz', pstation, dt_begin, dt_end)), 'file')
-        system(command);
-    else
-        fprintf('%s.%s_%s.sac is already exist in %s\n', pstation, dt_begin, dt_end, outputdir);
-    end
+    % if isempty(words{3})
+    %     words{3} = '""';
+    % end
+    query_str.network{2*ii-1} = words{1};
+    query_str.station{2*ii-1} = words{2};
+    query_str.location{2*ii-1} = words{3};
+    query_str.channel{2*ii-1} = words{4};
+    query_str.starttime{2*ii-1} = string(dt_begin);
+    query_str.endtime{2*ii-1} = string(dt_end);
+
+    words = split(tstation, '.');
+    query_str.network{2*ii} = words{1};
+    query_str.station{2*ii} = words{2};
+    query_str.location{2*ii} = words{3};
+    query_str.channel{2*ii} = words{4};
+    query_str.starttime{2*ii} = string(dt_begin);
+    query_str.endtime{2*ii} = string(dt_end);
 end
+query_T = struct2table(query_str);
+csvname = fullfile(outputdir, 'querysot_query.csv');
+writetable(query_T, csvname);
 
+%% Part 3: query the seismograms
+command = sprintf('%s %s/irisFetch/seismo_fetch.py', getenv('PYTHON'), ...
+    getenv('DVLA'));
+command = sprintf('%s --fname %s', command, csvname);
+command = sprintf('%s --client IRIS --outdir %s', command, outputdir);
+command = sprintf('%s --format sac', command);
+system(command);
 
+% for ii = 1:N
+%     dt_origin = datetime(evs_str.PreferredTime(ii), ...
+%         'Format', 'uuuu-MM-dd''T''HH:mm:ss.SSSSSS');
+%     dt_begin = dt_origin - minutes(1);
+%     dt_end = dt_origin + seconds(evs_str.tT(ii)) + minutes(10);
+% 
+%     % construct the Python call
+%     words = split(tstation, '.');
+%     if isempty(words{3})
+%         words{3} = '""';
+%     end
+%     command = sprintf('%s --lat %f --lon %f', basecommand, tlocation(2), tlocation(1));
+%     command = sprintf('%s --network %s --station %s', command, words{1}, words{2});
+%     command = sprintf('%s --start %s --end %s', command, dt_begin, dt_end);
+%     command = sprintf('%s --location %s', command, words{3}); 
+%     command = sprintf('%s --channels %s --outdir %s', command, ...
+%         words{4}, outputdir);
+%     command = sprintf('%s --format sac', command);
+% 
+%     command = replace(command, '*', '\*');
+%     command = replace(command, '?', '\?');
+% 
+%     % excecute the command
+%     if ~exist(fullfile(outputdir, sprintf('%s.%s_%s.sac', tstation, dt_begin, dt_end)), 'file') || ...
+%             ~exist(fullfile(outputdir, sprintf('%s.%s_%s.sacpz', tstation, dt_begin, dt_end)), 'file')
+%         system(command);
+%     else
+%         fprintf('%s.%s_%s.sac is already exist in %s\n', tstation, dt_begin, dt_end, outputdir);
+%     end
+% 
+%     % download local station seismograms for origin time correction
+%     words = split(pstation, '.');
+%     if isempty(words{3})
+%         words{3} = '""';
+%     end
+%     command = sprintf('%s --lat %f --lon %f', basecommand, plocation(2), plocation(1));
+%     command = sprintf('%s --network %s --station %s', command, words{1}, words{2});
+%     command = sprintf('%s --start %s --end %s', command, dt_begin, dt_end);
+%     command = sprintf('%s --location %s', command, words{3}); 
+%     command = sprintf('%s --channels %s --outdir %s', command, ...
+%         words{4}, outputdir);
+%     command = sprintf('%s --format sac', command);
+% 
+%     command = replace(command, '*', '\*');
+%     command = replace(command, '?', '\?');
+% 
+%     % excecute the command
+%     if ~exist(fullfile(outputdir, sprintf('%s.%s_%s.sac', pstation, dt_begin, dt_end)), 'file') || ...
+%             ~exist(fullfile(outputdir, sprintf('%s.%s_%s.sacpz', pstation, dt_begin, dt_end)), 'file')
+%         system(command);
+%     else
+%         fprintf('%s.%s_%s.sac is already exist in %s\n', pstation, dt_begin, dt_end, outputdir);
+%     end
+% end
+
+%% Part 3 save the output
+sname = fullfile(outputdir, sprintf('%s_output_%s.mat', mfilename, ...
+    datetime("now", "Format", "uuuu-MM-dd'T'HH:mm:ss.SSS")));
+save(sname, 'evs_str', 'dd', 'outputdir', ...
+    'lonlim', 'latlim', 'starttime', 'endtime', 'minmag', 'maxmag', ...
+    'pstation', 'plocation', 'tstation', 'tlocation')
+fprintf('The output is saved to %s\n', sname);
+
+elapsed_time = toc;
+fprintf('Elapsed time: %.2f seconds or %g events/minute\n', ...
+    elapsed_time, N/(elapsed_time/60))
 end

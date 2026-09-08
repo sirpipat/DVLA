@@ -34,6 +34,7 @@ def find_stations(client: Client, lat: float, lon: float, radius_deg: float,
         Return an Inventory (StationXML) of stations within `radius_deg` of (lat,lon)
         that have availability intersecting [starttime, endtime].
         """
+        
         return client.get_stations(latitude=lat, longitude=lon, maxradius=radius_deg,
                                                              starttime=starttime, endtime=endtime,
                                                              network=network, station=station, location=location, 
