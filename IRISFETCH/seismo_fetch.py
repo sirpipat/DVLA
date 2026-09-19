@@ -20,7 +20,7 @@ Usage (CLI):
 Import:
     from seismo_fetch import all
 
-Last modified by spipatprathanporn@ucsd.edu, 08/30/2026
+Last modified by spipatprathanporn@ucsd.edu, 09/19/2026
 """
 
 def _cli():
@@ -101,7 +101,7 @@ def _cli():
         for attempt in range(retries):
             try:
                 tr = client.get_waveforms(netcode, stacode, loc, chan, starttime, endtime)
-                print("waveform downloaded:", netcode, stacode, loc, chan)
+                
                 # Be a polite scraper: rest 0.5 seconds between iterations
                 time.sleep(0.5)
                 break
@@ -111,7 +111,7 @@ def _cli():
                     time.sleep(delay)
                     delay *= 2  # Exponential backoff
                     continue
-                print("failed to waveform for:", netcode, stacode, loc, chan)
+                print("failed to download waveform for:", netcode, stacode, loc, chan)
             except Exception:
                     traceback.print_exc()
                     print("no waveform available for:", netcode, stacode, loc, chan)
@@ -121,6 +121,12 @@ def _cli():
             break
         if skip_index:
              continue
+
+        if len(tr) <= 0:
+            print("failed to download waveform for:", netcode, stacode, loc, chan)
+            continue
+        else:
+            print("waveform downloaded:", netcode, stacode, loc, chan)
 
         # write SAC (first trace) and populate SAC header with station metadata
         if format.lower() == "sac":
