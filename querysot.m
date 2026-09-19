@@ -1,11 +1,19 @@
-function [evs_str, dd, outputdir] = querysot(lonlim, latlim, starttime, ...
-    endtime, minmag, maxmag, pstation, plocation, tstation, tlocation, name, fname)
-% [evs_str, dd, outputdir] = querysot([minlon maxlon], [minlon maxlon], ...
-%     starttime, endtime, minmag, maxmag, pstation, [plon plat], ...
-%     tstation, [tlon tlat], name)
+function varargout = querysot(lonlim, latlim, starttime, endtime, ...
+    minmag, maxmag, pstation, plocation, tstation, tlocation, name)
+% QUERYSOT([minlon maxlon], [minlat maxlat], starttime, endtime, ...
+%     minmag, maxmag, pstation, [plon plat], tstation, [tlon tlat], ...
+%     name)
+% QUERYSOT(..., fname)
+% QUERYSOT(..., evs_str_in)
+% [evs_str, dd, outputdir, sname] = QUERYSOT(...)
 %
 % Query events inside [minlon maxlon] and [minlat maxlat], waveforms, and 
 % response functions at pstation (P-wave) and tstation (T-wave).
+% Alternatively, table of events from a file or as an event struct can be
+% specified in variables "fname" and "evs_str_in", respectively. If
+% neither of these is specified, it will call IRISFETCH.EVENTS to obtain
+% the list of events. The outputs are also saved to a file. See the output
+% variable sname for the name of the output file.
 %
 % INPUT:
 % [minlon maxlon]       left and right boundary of the box
@@ -19,9 +27,18 @@ function [evs_str, dd, outputdir] = querysot(lonlim, latlim, starttime, ...
 % tstation              network.station.location.channel for T-wave xcorr
 % [tlon tlat]           lon,lat cooridnates of tstation
 % name                  name you want to give for this query
+% fname                 (optional) filename of a table of events
+% evs_str_in            (optional) input event information in a struct of 
+%                       arrays offollowing variables
+%       PreferredTime               event time     as from irisFetch.Events
+%       PreferredLatitude           event latitude
+%       PreferredLongitude          event longitude      
+%       PreferredDepth              event depth
+%       PreferredMagnitudeValue     event magnitude value
+%       PreferredMagnitudeType      event magnitude type
 %
 % OUTPUT:
-% evs_str               event information in a struct of arrays with a
+% evs_str               event information in a struct of arrays with 
 %                       following variables:
 %       PreferredTime               event time     as from irisFetch.Events
 %       PreferredLatitude           event latitude
@@ -37,11 +54,14 @@ function [evs_str, dd, outputdir] = querysot(lonlim, latlim, starttime, ...
 % dd                    event spatial separation in km
 % outputdir             directory to the save files at: 
 %                       $IFILES/SEISMOQUERY/name
+% sname                 filename where the outputs and input arguments are
+%                       saved: $IFILES/SEISMOQUERY/name/...
+%                       querysot_output_[datetime("now")].mat
 %
 % SEE ALSO:
 % READQUERYSOT, XCORRSOT
 %
-% Last modified by spipatprathanporn@ucsd.edu, 09/08/2025
+% Last modified by spipatprathanporn@ucsd.edu, 09/19/2026
 
 % tracking the elapsed time
 tic;
@@ -53,78 +73,78 @@ if ~exist(outputdir, 'dir')
     system(sprintf('mkdir %s', outputdir))
 end
 
-% base command for seismogram query
-basecommand = sprintf('%s %s/irisFetch/seismo_query.py', ...
-    getenv('PYTHON'), getenv('DVLA'));
-basecommand = sprintf('%s --radius %f', basecommand, 2);
-
 %% Part 1: query events
-if isempty(fname)
-    evs = irisFetch.Events('MinimumMagnitude', minmag, ...
-        'MaximumMagnitude', maxmag, ...
-        'MinimumLatitude', latlim(1), ...
-        'MaximumLatitude', latlim(2), ...
-        'MinimumLongitude', lonlim(1), ...
-        'MaximumLongitude', lonlim(2), ...
-        'StartTime', starttime, ...
-        'EndTime', endtime);
-else
-    % read the event lists from the table
-    T = readtable(fname);
-    T = unique(T);
-
-    % filter out out-of-range events
-    starttime = datetime(starttime);
-    endtime = datetime(endtime);
-
-    wh = and(and(and(T.Latitude>=latlim(1), T.Latitude<=latlim(2)), ...
-        and(T.Longitude>=lonlim(1), T.Longitude<=lonlim(2))), ...
-        and(T.Date+T.Time>=starttime, T.Date+T.Time<=endtime));
-    T = T(wh,:);
+if ~isstruct(fname)
+    if isempty(fname)
+        evs = irisFetch.Events('MinimumMagnitude', minmag, ...
+            'MaximumMagnitude', maxmag, ...
+            'MinimumLatitude', latlim(1), ...
+            'MaximumLatitude', latlim(2), ...
+            'MinimumLongitude', lonlim(1), ...
+            'MaximumLongitude', lonlim(2), ...
+            'StartTime', starttime, ...
+            'EndTime', endtime);
+    else
+        % read the event lists from the table
+        T = readtable(fname);
+        T = unique(T);
     
-    % sort events
-    T = sortrows(sortrows(T, 'Time', 'ascend'), 'Date', 'ascend');
-    N = height(T);
-
-    % place holder event list
-    ev_nan = struct('PreferredTime', 'NaT', 'PreferredLatitude', NaN, ...
-        'PreferredLongitude', NaN, 'PreferredDepth', NaN, ...
-        'PreferredMagnitudeValue', NaN, 'PreferredMagnitudeType', '', ...
-        'PublicId', 'evid=NaN');
-    evs = repmat(ev_nan, [1 N]);
-
-    for ii = 1:N
-        ev = irisFetch.Events('MinmumMagnitude', T.Magnitude(ii)-0.5, ...
-            'MaximumMagnitude', T.Magnitude(ii)+0.5, ...
-            'MinimumLatitude', T.Latitude(ii)-0.5, ...
-            'MaximumLatitude', T.Latitude(ii)+0.5, ...
-            'MinimumLongitude', T.Longitude(ii)-0.5, ...
-            'MaximumLongitude', T.Longitude(ii)+0.5, ...
-            'StartTime', string(T.Date(ii)+T.Time(ii)-minutes(0.5), 'uuuu-MM-dd''T''HH:mm:ss.SSSSSS'), ...
-            'EndTime', string(T.Date(ii)+T.Time(ii)+minutes(0.5), 'uuuu-MM-dd''T''HH:mm:ss.SSSSSS'));
+        % filter out out-of-range events
+        starttime = datetime(starttime);
+        endtime = datetime(endtime);
     
-        if length(ev)~=1
-            keyboard
-        else
-            evs(ii) = ev;
+        wh = and(and(and(T.Latitude>=latlim(1), T.Latitude<=latlim(2)), ...
+            and(T.Longitude>=lonlim(1), T.Longitude<=lonlim(2))), ...
+            and(T.Date+T.Time>=starttime, T.Date+T.Time<=endtime));
+        T = T(wh,:);
+        
+        % sort events
+        T = sortrows(sortrows(T, 'Time', 'ascend'), 'Date', 'ascend');
+        N = height(T);
+    
+        % place holder event list
+        ev_nan = struct('PreferredTime', 'NaT', 'PreferredLatitude', NaN, ...
+            'PreferredLongitude', NaN, 'PreferredDepth', NaN, ...
+            'PreferredMagnitudeValue', NaN, 'PreferredMagnitudeType', '', ...
+            'PublicId', 'evid=NaN');
+        evs = repmat(ev_nan, [1 N]);
+    
+        for ii = 1:N
+            ev = irisFetch.Events('MinmumMagnitude', T.Magnitude(ii)-0.5, ...
+                'MaximumMagnitude', T.Magnitude(ii)+0.5, ...
+                'MinimumLatitude', T.Latitude(ii)-0.5, ...
+                'MaximumLatitude', T.Latitude(ii)+0.5, ...
+                'MinimumLongitude', T.Longitude(ii)-0.5, ...
+                'MaximumLongitude', T.Longitude(ii)+0.5, ...
+                'StartTime', string(T.Date(ii)+T.Time(ii)-minutes(0.5), 'uuuu-MM-dd''T''HH:mm:ss.SSSSSS'), ...
+                'EndTime', string(T.Date(ii)+T.Time(ii)+minutes(0.5), 'uuuu-MM-dd''T''HH:mm:ss.SSSSSS'));
+        
+            if length(ev)~=1
+                keyboard
+            else
+                evs(ii) = ev;
+            end
         end
     end
+    
+    N = length(evs);
+    
+    % sort events by time
+    dt_origins = repmat(datetime('now','Format',...
+        'uuuu-MM-dd''T''HH:mm:ss.SSSSSS'), N, 1);
+    for ii = 1:N
+        dt_origins(ii) = datetime(evs(ii).PreferredTime, ...
+            'Format', 'uuuu-MM-dd''T''HH:mm:ss.SSSSSS');
+    end
+    [~,ii_sort] = sort(dt_origins);
+    evs = evs(ii_sort);
+
+    % convert to struct of arrays
+    evs_str = array2struct(evs);
+else
+    evs_str = fname;
+    N = length(evs_str.PreferredTime);
 end
-
-N = length(evs);
-
-% sort events by time
-dt_origins = repmat(datetime('now','Format',...
-    'uuuu-MM-dd''T''HH:mm:ss.SSSSSS'), N, 1);
-for ii = 1:N
-    dt_origins(ii) = datetime(evs(ii).PreferredTime, ...
-        'Format', 'uuuu-MM-dd''T''HH:mm:ss.SSSSSS');
-end
-[~,ii_sort] = sort(dt_origins);
-evs = evs(ii_sort);
-
-% convert to struct of arrays
-evs_str = array2struct(evs);
 
 % compute the distance
 dx = sin(deg2rad(mean(latlim))) .* ...
@@ -254,4 +274,8 @@ fprintf('The output is saved to %s\n', sname);
 elapsed_time = toc;
 fprintf('Elapsed time: %.2f seconds or %g events/minute\n', ...
     elapsed_time, N/(elapsed_time/60))
+
+%% Part 4 collect the output
+outputs = {evs_str, dd, outputdir, sname};
+varargout = outputs(1:nargout);
 end
