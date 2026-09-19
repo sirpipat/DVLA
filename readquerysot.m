@@ -25,7 +25,7 @@ function evs_str = readquerysot(ddir)
 % SEE ALSO:
 % QUERYSOT, XCORRSOT
 %
-% Last modified by spipatprathanporn@ucsd.edu, 09/08/2026
+% Last modified by spipatprathanporn@ucsd.edu, 09/19/2026
 
 fnames = ls2cell(fullfile(ddir, 'querysot_output_*.mat'), 1)';
 
@@ -34,17 +34,24 @@ fn = fieldnames(evs_str);
 for ii = 2:length(fnames)
     s = load(fnames{ii}, 'evs_str');
     for jj = 1:length(fn)
+        if ~isfield(s.evs_str, fn{jj})
+            s.evs_str.(fn{jj}) = repmat({''}, size(s.evs_str.(fn{1})));
+        end
         evs_str.(fn{jj}) = horzcat(evs_str.(fn{jj}), s.evs_str.(fn{jj}));
     end
 end
 
-% remove duplicates
+% make sure every datetime format is ended with ss.SSSSSS
 N = length(evs_str.PreferredTime);
 for ii = 1:N
     dt_str = evs_str.PreferredTime{ii};
     if length(dt_str) < 26
-        evs_str.PreferredTime{ii} = [dt_str '.' ...
-            repmat('0', 1, 25-length(dt_str))];
+        if length(dt_str) == 19
+            evs_str.PreferredTime{ii} = [dt_str '.000000'];
+        else
+            evs_str.PreferredTime{ii} = [dt_str  ...
+                repmat('0', 1, 26-length(dt_str))];
+        end
     end
 end
 end
