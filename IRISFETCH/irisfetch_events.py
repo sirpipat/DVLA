@@ -14,7 +14,7 @@ import signal
     Usage:
         python irisfetch_events.py --starttime '2020-01-01T00:00:00' --endtime 2020-01-02T00:00:00 --minmagnitude 5.0 --output eq_data.mat
 
-    Last modified by spipatprathanporn@ucsd.edu, 2026-05-07
+    Last modified by spipatprathanporn@ucsd.edu, 2026-09-19
 """
 
 def timeout_handler(signum, frame):
@@ -40,7 +40,7 @@ def query_and_save(
 ):
     try:
         # create FDSN client
-        client = Client("IRIS")
+        client = Client("USGS")
 
         # query events
         signal.signal(signal.SIGALRM, timeout_handler)
