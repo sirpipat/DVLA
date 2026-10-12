@@ -34,7 +34,7 @@ function [evs_used, ii_used, cc_P, tt_shift_P, cc_T, tt_shift_T] = xcorrsot(ddir
 % SEE ALSO:
 % IRISFETCH, QUERYSOT, VISUALIZESOT
 %
-% Last modifed by spipatprathanporn@ucsd.edu, 09/19/2026
+% Last modifed by spipatprathanporn@ucsd.edu, 10/12/2026
 
 % length of the event list
 N = length(evs_str.PreferredTime);
@@ -44,7 +44,7 @@ resp_output_fmt = 'velocity';
 
 %% Part 1
 % compute the distance bewteen events
-dx = sin(deg2rad(median(evs_str.PreferredLatitude))) .* ...
+dx = cos(deg2rad(median(evs_str.PreferredLatitude))) .* ...
     deg2km(evs_str.PreferredLongitude - evs_str.PreferredLongitude');
 dy = deg2km(evs_str.PreferredLatitude - evs_str.PreferredLatitude');
 dz = evs_str.PreferredDepth - evs_str.PreferredDepth';

@@ -1,5 +1,5 @@
 function varargout = querysot(lonlim, latlim, starttime, endtime, ...
-    minmag, maxmag, pstation, plocation, tstation, tlocation, name)
+    minmag, maxmag, pstation, plocation, tstation, tlocation, name, fname)
 % QUERYSOT([minlon maxlon], [minlat maxlat], starttime, endtime, ...
 %     minmag, maxmag, pstation, [plon plat], tstation, [tlon tlat], ...
 %     name)
@@ -61,7 +61,7 @@ function varargout = querysot(lonlim, latlim, starttime, endtime, ...
 % SEE ALSO:
 % READQUERYSOT, XCORRSOT
 %
-% Last modified by spipatprathanporn@ucsd.edu, 09/19/2026
+% Last modified by spipatprathanporn@ucsd.edu, 10/09/2026
 
 % tracking the elapsed time
 tic;
@@ -147,7 +147,7 @@ else
 end
 
 % compute the distance
-dx = sin(deg2rad(mean(latlim))) .* ...
+dx = cos(deg2rad(mean(latlim))) .* ...
     deg2km(evs_str.PreferredLongitude - evs_str.PreferredLongitude');
 dy = deg2km(evs_str.PreferredLatitude - evs_str.PreferredLatitude');
 dz = evs_str.PreferredDepth - evs_str.PreferredDepth';
