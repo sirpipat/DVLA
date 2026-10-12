@@ -12,13 +12,18 @@ function visualizesot(ddir, name)
 % SEE ALSO:
 % QUERYSOT, READQUERYSOT, XCORRSOT
 %
-% Last modified by spipatprathanporn@ucsd.edu, 09/19/2026
+% Last modified by spipatprathanporn@ucsd.edu, 10/12/2026
 
 defval('name', removepath(ddir))
 
 % load relevant variables
 fnames = ls2cell(fullfile(ddir, 'querysot_output_*.mat'), 1)';
 load(fnames{end}, 'lonlim', 'latlim', 'minmag', 'pstation', 'tstation')
+for ii = 1:length(fnames)
+    s = load(fnames{ii}, 'lonlim', 'latlim');
+    lonlim = [min(lonlim(1), s.lonlim(1)) max(lonlim(2), s.lonlim(2))];
+    latlim = [min(latlim(1), s.latlim(1)) max(latlim(2), s.latlim(2))];
+end
 evs_str = readquerysot(ddir);
 
 pkstnm = cindeks(split(pstation, '.'), 2);
@@ -91,12 +96,12 @@ try
     ax2 = addlayeraxes(ax);
     for ii = 1:height(g.Edges)
         endnodes = g.Edges(ii,:).EndNodes;
-        plot(ax2, evs_str.PreferredLongitude(endnodes), ...
+        plot(ax2, mod(evs_str.PreferredLongitude(endnodes), 360), ...
             evs_str.PreferredLatitude(endnodes), 'Color', 'k', ...
             'LineWidth', 0.5)
     end
     hold on
-    scatter(evs_str.PreferredLongitude, ...
+    scatter(mod(evs_str.PreferredLongitude, 360), ...
         evs_str.PreferredLatitude , 6, evs_str.dt_origin.Year, 'filled', ...
         'MarkerEdgeColor', 'k')
     colormap(ax2, jet(endyear-startyear+1))
