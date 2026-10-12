@@ -59,9 +59,9 @@ function varargout = querysot(lonlim, latlim, starttime, endtime, ...
 %                       querysot_output_[datetime("now")].mat
 %
 % SEE ALSO:
-% READQUERYSOT, XCORRSOT
+% QUERYSOT_ROUTINE, READQUERYSOT, XCORRSOT
 %
-% Last modified by spipatprathanporn@ucsd.edu, 10/09/2026
+% Last modified by spipatprathanporn@ucsd.edu, 10/12/2026
 
 % tracking the elapsed time
 tic;
