@@ -59,7 +59,7 @@ function varargout = querysot_routine(lonlim, latlim, starttime, ...
 % SEE ALSO:
 % QUERYSOT, READQUERYSOT, XCORRSOT
 %
-% Last modified by spipatprathanporn@ucsd.edu, 10/12/2026
+% Last modified by spipatprathanporn@ucsd.edu, 10/20/2026
 
 % tracking the elapsed time
 timerval = tic;
@@ -74,6 +74,16 @@ end
 
 dt_start = datetime(starttime, 'Format', 'uuuu-MM-dd''T''HH:mm:ss');
 dt_end = datetime(endtime, 'Format', 'uuuu-MM-dd''T''HH:mm:ss');
+
+% prevent infinite splitting especially when it cannot to the data server
+if dt_end - db_start < seconds(1)
+    fprintf(['Query time window is (splitted) too short. It has to be ' ...
+        'at least 1 second.\n'])
+    evs_str = readquerysot(outputdir);
+    outputs = {evs_str, outputdir};
+    varargout = outputs(1:nargout);
+    return
+end
 
 %% Schedule the query
 try
