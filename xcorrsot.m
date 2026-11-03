@@ -34,7 +34,7 @@ function [evs_used, ii_used, cc_P, tt_shift_P, cc_T, tt_shift_T] = xcorrsot(ddir
 % SEE ALSO:
 % IRISFETCH, QUERYSOT, VISUALIZESOT
 %
-% Last modifed by spipatprathanporn@ucsd.edu, 10/12/2026
+% Last modifed by spipatprathanporn@ucsd.edu, 11/03/2026
 
 % length of the event list
 N = length(evs_str.PreferredTime);
@@ -97,7 +97,34 @@ for ii = 1:N
         fname = replace(fname, '.000000', '');
         fname = fullfile(ddir, fname);
     
-        [seisP, hdrP] = readsac(fname);
+        try
+            [seisP, hdrP] = readsac(fname);
+        catch ME
+            % sometimes stations switch from BHN,BHE to BH1,BH2 or
+            % vice-versa
+            fprintf('File %s does not exist in %s or it cannot be read.\n', ...
+                fname, ddir);
+            if contains(fname, 'BH1')
+                fprintf('Try reading channel BHN instead of BH1 ...\n')
+                fname = replace(fname, 'BH1', 'BHN');
+            elseif contains(fname, 'BH2')
+                fprintf('Try reading channel BHE instead of BH2 ...\n')
+                fname = replace(fname, 'BH2', 'BHE');
+            elseif contains(fname, 'BHN')
+                fprintf('Try reading channel BH1 instead of BHN ...\n')
+                fname = replace(fname, 'BHN', 'BH1');
+            elseif contains(fname, 'BHE')
+                fprintf('Try reading channel BH2 instead of BHE ...\n')
+                fname = replace(fname, 'BHE', 'BH2');
+            else
+                ME.getReport()
+                fprintf("Don't know how to handle. Move on.\n")
+                tr(ii).t = nan;
+                tr(ii).seis = nan;
+                continue
+            end
+            [seisP, hdrP] = readsac(fname);
+        end
         [~, ~, ~, fs, ~, dts, ~] = gethdrinfo(hdrP);
         tP = seconds(dts - dt_origin);
         
@@ -219,7 +246,32 @@ for ii = 1:N
         fname = replace(fname, '.000000', '');
         fname = fullfile(ddir, fname);
     
-        [seisT, hdrT] = readsac(fname);
+        try
+            [seisT, hdrT] = readsac(fname);
+        catch ME
+            % sometimes stations switch from BHN,BHE to BH1,BH2 or
+            % vice-versa
+            fprintf('File %s does not exist in %s or it cannot be read.\n', ...
+                fname, ddir);
+            if contains(fname, 'BH1')
+                fprintf('Try reading channel BHN instead of BH1 ...\n')
+                fname = replace(fname, 'BH1', 'BHN');
+            elseif contains(fname, 'BH2')
+                fprintf('Try reading channel BHE instead of BH2 ...\n')
+                fname = replace(fname, 'BH2', 'BHE');
+            elseif contains(fname, 'BHN')
+                fprintf('Try reading channel BH1 instead of BHN ...\n')
+                fname = replace(fname, 'BHN', 'BH1');
+            elseif contains(fname, 'BHE')
+                fprintf('Try reading channel BH2 instead of BHE ...\n')
+                fname = replace(fname, 'BHE', 'BH2');
+            else
+                ME.getReport()
+                fprintf("Don't know how to handle. Move on.\n")
+                continue
+            end
+            [seisT, hdrT] = readsac(fname);
+        end
         [~, ~, ~, fs, ~, dts, ~] = gethdrinfo(hdrT);
         tT = seconds(dts - dt_origin);
         
