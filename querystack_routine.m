@@ -57,7 +57,7 @@ function varargout = querystack_routine(station, location, minradius, ...
 % SEE ALSO:
 % QUERYSTACK, READQUERYSTACK, QUERYSOT_ROUTINE
 %
-% Last modified by spipatprathanporn@ucsd.edu, 10/20/2026
+% Last modified by spipatprathanporn@ucsd.edu, 11/03/2026
 
 defval('evs_str_in', [])
 
@@ -70,7 +70,7 @@ dt_start = datetime(starttime, 'Format', 'uuuu-MM-dd''T''HH:mm:ss');
 dt_end = datetime(endtime, 'Format', 'uuuu-MM-dd''T''HH:mm:ss');
 
 % prevent infinite splitting especially when it cannot to the data server
-if dt_end - db_start < seconds(1)
+if dt_end - dt_start < seconds(1)
     fprintf(['Query time window is (splitted) too short. It has to be ' ...
         'at least 1 second.\n'])
     evs_str = readquerysot(outputdir);
