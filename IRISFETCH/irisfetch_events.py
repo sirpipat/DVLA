@@ -14,7 +14,7 @@ import signal
     Usage:
         python irisfetch_events.py --starttime '2020-01-01T00:00:00' --endtime 2020-01-02T00:00:00 --minmagnitude 5.0 --output eq_data.mat
 
-    Last modified by spipatprathanporn@ucsd.edu, 2026-09-19
+    Last modified by spipatprathanporn@ucsd.edu, 2026-11-03
 """
 
 def timeout_handler(signum, frame):
@@ -39,12 +39,12 @@ def query_and_save(
         output='events.mat'
 ):
     try:
-        # create FDSN client
-        client = Client("USGS")
-
         # query events
         signal.signal(signal.SIGALRM, timeout_handler)
         signal.alarm(20)  # set timeout to 20 seconds
+
+        # create FDSN client
+        client = Client("USGS")
 
         catalog = client.get_events(
             starttime=UTCDateTime(starttime) if starttime else None,
@@ -65,7 +65,7 @@ def query_and_save(
         )
         signal.alarm(0)  # disable alarm
     except  KeyboardInterrupt:
-        print("Query timed out after 10 seconds", file=sys.stderr)
+        print("Query timed out after 20 seconds", file=sys.stderr)
         sys.exit(2)
     except Exception as e:
         signal.alarm(0)  # disable alarm in case of exception
