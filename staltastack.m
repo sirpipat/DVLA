@@ -33,7 +33,7 @@ function varargout = staltastack(ddir, evs_str, station, location, sta, ...
 % SEE ALSO:
 % QUERYSTACK, READQUERYSTACK, QUERYSTACK_ROUTINE
 %
-% Last modified by spipatprathanporn@ucsd.edu, 10/12/2026
+% Last modified by spipatprathanporn@ucsd.edu, 11/03/2026
 
 
 N = length(evs_str.PreferredTime);
@@ -131,15 +131,22 @@ for ii = 1:N
             distcount(whbin) = distcount(whbin) + 1;
             [evs_str.ratio_max(ii), imax] = max(ratio);
             evs_str.t_ratio_max(ii) = t(imax);
+            [evs_str.ratio_maxT(ii), imaxT] = ...
+                max(ratio(abs(t-evs_str.tT(ii))<=200));
+            evs_str.t_ratio_maxT(ii) = ratio(imaxT);
             ii_used(ii) = true;
         else
             evs_str.ratio_max(ii) = nan;
             evs_str.t_ratio_max(ii) = nan;
+            evs_str.ratio_maxT(ii) = nan;
+            evs_str.t_ratio_maxT(ii) = nan;
         end
     catch ME
         ME.getReport()
         evs_str.ratio_max(ii) = nan;
         evs_str.t_ratio_max(ii) = nan;
+        evs_str.ratio_maxT(ii) = nan;
+        evs_str.t_ratio_maxT(ii) = nan;
     end
 end
 
@@ -179,6 +186,7 @@ wht = and(abs(evs_used.t_ratio_max-evs_used.distkm/1.5) <= 200, ...
 
 %% plot the STA/LTA stack
 figure(1)
+clf
 set(gcf, 'Units', 'inches', 'Position', [0 1 6 8])
 im = imagesc([0 100], [0 7200], rstack);
 set(im, 'AlphaData', ~isnan(rstack))
@@ -202,7 +210,9 @@ set(gcf, 'Renderer', 'painters')
 figdisp(sprintf('%s_%s_%d_%d.eps', mfilename, station, sta, lta), [], [], ...
     2, [], 'epstopdf')
 
+% plot the map centered at the station
 figure(2)
+clf
 set(gcf, 'Units', 'inches', 'Position', [0 1 8 7])
 ax = polarbasemap2(gca, 100, location(1), location(2), false);
 delete(ax.Children(end));
@@ -223,7 +233,9 @@ set(gcf, 'Renderer', 'painters')
 figdisp(sprintf('%s_%s_observable_T-phase.eps', mfilename, station), ...
     [], [], 2, [], 'epstopdf')
 
+% plot on the rectangular map
 figure(3)
+clf
 set(gcf, 'Units', 'inches', 'Position', [0 1 9 4.2])
 N = histcounts2(mod(evs_used.PreferredLongitude(wht), ...
     360), evs_used.PreferredLatitude(wht), 0:10:360, -90:10:90);
@@ -256,6 +268,12 @@ set(gcf, 'Renderer', 'painters')
 exportgraphics(gcf, fullfile(getenv('EPS'), ...
     sprintf('%s_%s_observable_T-phase_density.pdf', mfilename, ...
     station)), 'ContentType', 'image', 'Resolution', 600, 'Padding', 0);
+
+%% Save the output
+fout = fullfile(ddir, sprintf('%s_output.mat', mfilename));
+save(fout, 'ddir', 'evs_str', 'station', 'location', 'sta', 'lta', ...
+    'colo', 'cohi', 'rstack', 'distcount', 't', 'evs_used');
+fprintf('The input parameters and outputs are saved to %s\n', sname);
 
 %% Collect the output
 outputs = {rstack, distcount, t, evs_used};
