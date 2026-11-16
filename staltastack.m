@@ -33,7 +33,7 @@ function varargout = staltastack(ddir, evs_str, station, location, sta, ...
 % SEE ALSO:
 % QUERYSTACK, READQUERYSTACK, QUERYSTACK_ROUTINE
 %
-% Last modified by spipatprathanporn@ucsd.edu, 11/03/2026
+% Last modified by spipatprathanporn@ucsd.edu, 11/16/2026
 
 
 N = length(evs_str.PreferredTime);
@@ -273,7 +273,7 @@ exportgraphics(gcf, fullfile(getenv('EPS'), ...
 fout = fullfile(ddir, sprintf('%s_output.mat', mfilename));
 save(fout, 'ddir', 'evs_str', 'station', 'location', 'sta', 'lta', ...
     'colo', 'cohi', 'rstack', 'distcount', 't', 'evs_used');
-fprintf('The input parameters and outputs are saved to %s\n', sname);
+fprintf('The input parameters and outputs are saved to %s\n', fout);
 
 %% Collect the output
 outputs = {rstack, distcount, t, evs_used};
