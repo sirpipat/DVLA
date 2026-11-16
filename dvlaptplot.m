@@ -1,5 +1,5 @@
 function figs = dvlaptplot(z, t, data, c, tipe)
-% fig = DVLAFKPLOT(z, t, data, c, tipe)
+% fig = DVLAPTPLOT(z, t, data, c, tipe)
 %
 % Makes a horizontal slowness (p) - time (t) plot for a vertical hydrophone
 % array.
@@ -18,7 +18,7 @@ function figs = dvlaptplot(z, t, data, c, tipe)
 % OUTPUT:
 % figs       figure handles
 %
-% Last modified by spipatprathanporn@ucsd.edu, 04/30/2026
+% Last modified by spipatprathanporn@ucsd.edu, 11/16/2026
 
 % tipe
 % 1 - vertical slowness (dt/dz)
