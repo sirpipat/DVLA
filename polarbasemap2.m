@@ -10,6 +10,10 @@ function varargout = polarbasemap2(ax, rlim, lon, lat, bath)
 % zeroth azimuth is pointing in Y direction (upward).
 % Use PLOTPOLARMAP2 to plot anything to the basemap.
 %
+% If bath is set to true, and rlim > 30 degress, it will use a
+% low-resolution GEBCO bathymetry map instead of the full-resolution one to
+% save the memory usage.
+%
 % INPUT:
 % ax        target axes                                     [default: gca]
 % rlim      map radius (colatitude) limit in degrees        [default: 40]
@@ -23,7 +27,7 @@ function varargout = polarbasemap2(ax, rlim, lon, lat, bath)
 % SEE ALSO:
 % PLOTPOLARMAP2, POLARBASEMAP
 %
-% Last modified by spipatprathanporn@ucsd.edu, 08/13/2026
+% Last modified by spipatprathanporn@ucsd.edu, 11/24/2026
 
 defval('ax', gca)
 defval('rlim', 40)
@@ -80,10 +84,16 @@ else
     lattop = max(lats2);
     if bath
         % reads the bathymetry
-        [lons, lats, elev] = bathymetry([], [lonleft lonright], [latbottom lattop]);
-    
+        if rlim <= 30
+            [lons, lats, elev] = bathymetry([], [lonleft lonright], [latbottom lattop]);
+        else
+            [lons, lats, elev] = bathymetryglobal;
+            lons = [lons(end)-360; lons; lons(1)+360];
+            elev = padarray(elev, [1 0], 'circular');
+        end
+
         % interpolate the bathymetry and make it 2D
-        if lonleft < lonright
+        if rlim <= 30 && lonleft < lonright
             topo = interp2(mod(lons+180,360)-180, lats, double(elev)', lons2, lats2);
         else
             topo = interp2(lons, lats, double(elev)', mod(lons2,360), lats2);
